@@ -1,0 +1,1 @@
+{"name":"llama-smith","version":"0.1.0","type":"module","bin":{"llama-smith":"./llama-smith.mjs"}}
