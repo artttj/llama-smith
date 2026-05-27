@@ -14,7 +14,9 @@ test('dashboard renders project, vibe score, gotcha and lesson', () => {
   assert.match(html, /myapp/)
   assert.match(html, /76%/)
   assert.match(html, /SOLID/)
-  assert.match(html, /battle-tested/i)
+  assert.match(html, /lessons extracted/i)
+  assert.match(html, /repo scars/i)
   assert.match(html, /deploy from production not main/)
   assert.match(html, /CRON/)
+  assert.match(html, /survived first contact/)  // tier flavor caption
 })
