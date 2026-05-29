@@ -109,12 +109,14 @@ const avatarImg = (full, cls = '') => {
 }
 
 // Allow relative paths and fragments; reject any non-http(s)/mailto scheme
-// (javascript:, data:) so forged link text can't inject an executable URL.
-const safeHref = u => { const t = u.trim(); return /^[a-z][a-z0-9+.-]*:/i.test(t) && !/^(https?|mailto):/i.test(t) ? '#' : t }
+// Only external http(s)/mailto links navigate. A skill's internal references
+// (references/*.md, memory.md) point at files that live inside the skill folder,
+// not the dashboard server, so render them as code instead of dead 404 links.
+const mdLink = (text, url) => /^(https?:|mailto:)/i.test(url.trim()) ? `<a href="${url.trim()}" rel="noopener noreferrer">${text}</a>` : `<code>${text}</code>`
 const mdInline = s => esc(s)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
   .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) => `<a href="${safeHref(u)}" rel="noopener noreferrer">${t}</a>`)
+  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) => mdLink(t, u))
   .replace(/_\(([^)]+)\)_/g, '<em>($1)</em>')
 
 function mdToHtml(md) {
