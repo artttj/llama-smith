@@ -276,14 +276,14 @@ function indexPage() {
 
 function skillPanel(r) {
   const ops = r.opsFindings || [], hot = r.newCodeHotspots || []
-  if (!ops.length && !hot.length) {
+  if (!ops.length && !hot.length && !(r.architecture || []).length && !(r.commands || []).length) {
     return `<div class="skill"><div class="bar">${I.file} skill ${stamp('NOT FORGED')}</div><pre class="empty">Nothing to forge — the swarm found no operational risk and no churn worth recording. Skip, don't stub.</pre></div>`
   }
   const built = buildSkillFiles(
     { repo: r.repo, fullName: repoFull(r), opsFindings: ops, newCodeHotspots: hot },
     {
       name: `${r.repo}-smith`, stack: r.stackFull || repoStack(r), lessons: adaptLessons(r.lessons || []), scannedAt: 'this run',
-      commands: r.commands || [], boundaries: r.boundaries || [], entrypoints: r.entrypoints || [], architecture: r.architecture || [],
+      commands: r.commands || [], boundaries: r.boundaries || [], entrypoints: r.entrypoints || [], architecture: r.architecture || [], forensics: r.forensics || null,
     }
   )
   const lines = f => (f.body.match(/\n/g) || []).length + 1
