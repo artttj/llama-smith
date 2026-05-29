@@ -165,7 +165,7 @@ function indexPage() {
   <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>The scariest findings, ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
   <div class="glitches">${glitchFeed()}</div>
   <footer>Forged by <b>llama-smith</b> · it reads your <b>ops</b>, not your vibes · cartoon llama by <b>OpenMoji</b> (CC BY-SA 4.0), icons by Lucide (ISC)</footer>`
-  return shell('llama-smith · the construct', body, RAIN)
+  return shell('llama-smith · the construct', body)  // shell already includes RAIN
 }
 
 function skillPanel(r) {
@@ -218,7 +218,7 @@ function repoPage(r) {
       ? `<div class="churn"><div class="col old"><h4>Old churn — leaked non-code</h4>${oldCol}</div><div class="col new"><h4>New — code-only hotspots</h4>${newCol}</div></div>`
       : `<div class="col new">${newCol}</div>`}
   <footer><b>llama-smith</b> · ${esc(full)} · every claim cites a file</footer>`
-  return shell(`llama-smith · ${full}`, body, RAIN + FILES_JS)
+  return shell(`llama-smith · ${full}`, body, FILES_JS)  // shell already includes RAIN
 }
 
 mkdirSync(outDir, { recursive: true })
