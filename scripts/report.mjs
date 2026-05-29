@@ -144,9 +144,11 @@ function indexPage() {
   <header class="hero">
     <div class="hero-main">
       ${heroArt}
-      <h1 class="slogan">Many Smiths enter.<br>One skill comes out.</h1>
-      <p class="lede">Point llama-smith at any repo. A local swarm reads how it deploys, breaks, leaks, and drifts, then forges a project skill <span class="hot">from what it can prove</span>.</p>
-      <div class="taglines"><span>Reads your ops, not your vibes</span><span>Every claim cites a file</span><span>Hallucinations die at the citation step</span><span>Runs on your Ollama, local or cloud</span></div>
+      <div class="hero-copy">
+        <h1 class="slogan">Many Smiths enter.<br>One skill comes out.</h1>
+        <p class="lede">Point llama-smith at any repo. A swarm of Ollama models reads how it deploys, breaks, leaks, and drifts, then forges a project skill <span class="hot">from what it can prove</span>.</p>
+        <div class="taglines"><span>Reads your ops, not your vibes</span><span>Every claim cites a file</span><span>Hallucinations die at the citation step</span><span>Runs on your Ollama, local or cloud</span></div>
+      </div>
     </div>
   </header>
   <section class="stats">
