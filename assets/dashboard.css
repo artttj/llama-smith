@@ -36,6 +36,7 @@ a{color:inherit}
 header.hero{padding:2.5rem 0 1rem}
 .brandbar{display:inline-flex;align-items:center;gap:.55rem;text-decoration:none;padding:.3rem 0}
 .brandbar .bl,.brandbar .bl svg{width:26px;height:26px}
+.brandbar img.bl{border-radius:6px;object-fit:cover}
 .brandbar .bt{font-weight:800;color:var(--green-hot);letter-spacing:-.01em;font-size:1rem;text-shadow:0 0 9px oklch(89% 0.22 150/.45)}
 .brandbar .bt b{color:var(--faint)}
 .hero-main{display:grid;grid-template-columns:auto 1fr;gap:clamp(1.5rem,4vw,3.5rem);align-items:center;padding:2rem 0 1rem;max-width:920px}
@@ -220,8 +221,10 @@ footer b{color:var(--green)}
 .bc-val{color:var(--green-hot);font-variant-numeric:tabular-nums;font-weight:600;font-size:.74rem;white-space:nowrap}
 .bc-row.danger .bc-val{color:var(--high)}
 .bc-flag{color:var(--high);font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;margin-left:.3em}
-.busfactor{display:flex;flex-direction:column;gap:.85rem}
-.bf-num{font-size:2.6rem;font-weight:800;color:var(--green-hot);line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:.55rem}
+.busfactor{display:flex;flex-direction:column;gap:.9rem}
+.bf-head{display:flex;align-items:center;gap:.9rem}
+.bf-bus svg{width:48px;height:48px;color:var(--green-hot);flex:none}
+.bf-num{font-size:3.4rem;font-weight:800;color:var(--green-hot);line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:.55rem}
 .bf-cap{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);font-weight:600}
 .bf-band{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
 .bf-seg{font-size:.54rem;text-align:center;padding:.36rem .2rem;border-radius:var(--r-xs);background:var(--surface-2);color:var(--faint);letter-spacing:.05em;border:1px solid var(--line)}

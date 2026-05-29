@@ -44,6 +44,13 @@ test('parseWorkflowCommands skips comments and empty runs', () => {
   assert.deepEqual(parseWorkflowCommands('steps:\n  - run: |\n      # just a comment\n      make deploy'), ['make deploy'])
 })
 
+test('parseWorkflowCommands folds backslash line-continuations into one command', () => {
+  const yml = 'steps:\n  - run: |\n      php gen.php \\\n        ClassA \\\n        ClassB'
+  const cmds = parseWorkflowCommands(yml)
+  assert.equal(cmds.length, 1)
+  assert.match(cmds[0], /php gen\.php ClassA ClassB/)
+})
+
 test('classifyCommand buckets by intent', () => {
   assert.equal(classifyCommand('npm test'), 'test')
   assert.equal(classifyCommand('npm run lint'), 'lint')

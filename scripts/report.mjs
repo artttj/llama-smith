@@ -31,7 +31,9 @@ const repoStars = r => r.stars ?? null
 const readAsset = f => { const p = join(LS, 'assets', f); return existsSync(p) ? readFileSync(p, 'utf8').replace(/\n+$/, '') : '' }
 const HERO_SRC = join(LS, 'assets', 'hero.webp')
 const HAS_HERO = existsSync(HERO_SRC)
-const LLAMA = readAsset('illustrations/llama.svg')  // the one OpenMoji we keep
+const LOGO_SRC = join(LS, 'assets', 'logo.webp')
+const HAS_LOGO = existsSync(LOGO_SRC)
+const LLAMA = readAsset('illustrations/llama.svg')
 
 // Lucide line icons, inlined (offline, themeable via currentColor).
 const SVG = i => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${i}</svg>`
@@ -86,7 +88,8 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <body><canvas id="rain"></canvas><div class="wrap">${body}</div>
 <script>${RAIN}${js}</script></body></html>`
 
-const brandbar = () => `<a class="brandbar" href="index.html"><span class="bl">${LLAMA}</span><span class="bt">llama<b>·</b>smith</span></a>`
+const brandmark = HAS_LOGO ? '<img class="bl" src="logo.webp" width="40" height="40" alt="llama-smith logo">' : `<span class="bl">${LLAMA}</span>`
+const brandbar = () => `<a class="brandbar" href="index.html">${brandmark}<span class="bt">llama<b>·</b>smith</span></a>`
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
 // Opinionated one-liner, grounded: the validated architecture overview is the
@@ -109,10 +112,13 @@ const avatarImg = (full, cls = '') => {
   return o ? `<img class="avatar ${cls}" src="https://github.com/${esc(o)}.png?size=80" width="80" height="80" loading="lazy" alt="${esc(o)} avatar">` : ''
 }
 
+// Allow relative paths and fragments; reject any non-http(s)/mailto scheme
+// (javascript:, data:) so forged link text can't inject an executable URL.
+const safeHref = u => { const t = u.trim(); return /^[a-z][a-z0-9+.-]*:/i.test(t) && !/^(https?|mailto):/i.test(t) ? '#' : t }
 const mdInline = s => esc(s)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
   .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) => `<a href="${safeHref(u)}" rel="noopener noreferrer">${t}</a>`)
   .replace(/_\(([^)]+)\)_/g, '<em>($1)</em>')
 
 function mdToHtml(md) {
@@ -155,7 +161,7 @@ function busFactorBlock(fr) {
     .map(t => `<span class="bf-seg${t === fr.risk ? ' on ' + RISK_TIER[t] : ''}">${t}</span>`).join('')
   const people = (fr.keyPeople || []).slice(0, 3).map(p => esc(p.name)).join(', ')
   return `<div class="busfactor">
-    <div class="bf-num">${fr.busFactor}<span class="bf-cap">bus factor</span></div>
+    <div class="bf-head"><span class="bf-bus">${I.bus}</span><div class="bf-num">${fr.busFactor}<span class="bf-cap">bus factor</span></div></div>
     <div class="bf-band">${band}</div>
     ${people ? `<p class="bf-note">${people}${fr.keyPeople.length > 3 ? ' and others' : ''} hold most of the code.</p>` : ''}
   </div>`
@@ -198,12 +204,12 @@ function glitchFeed() {
 }
 
 const TYPES = [
-  { ic: 'eye', stamp: 'ARCHITECT-SMITH', name: 'Project architecture', desc: 'What the app is, its modules, data flow, data model, and entrypoints — the matrix of the codebase. Every claim validated against a real file.' },
-  { ic: 'package', stamp: 'STACK-MAP', name: 'Stack & commands', desc: 'The real stack, entrypoints, and the build/test/deploy commands an agent should run — parsed from manifests and CI, never invented.' },
-  { ic: 'shield', stamp: 'BOUNDARIES', name: 'Do-not-touch', desc: 'Lockfiles, generated output, and env files an agent must not hand-edit — with the reason it must not.' },
-  { ic: 'rocket', stamp: 'OPS-SMITHS', name: 'Operational risk', desc: 'Deploy traps, secret leaks, and cron ghosts. The ops layer hanging off the architecture, not the headline.' },
-  { ic: 'bug', stamp: 'FRAGILITY', name: 'Fragile hotspots', desc: 'Code that churns hard over the last year. Where bugs live. Docs and lockfiles excluded.' },
-  { ic: 'eye', stamp: 'ORACLE', name: 'Two oracles', desc: 'The Validation Oracle re-reads each claim against its file — hallucinations die here. The Self-Improvement Oracle keeps the skill\'s memory.' },
+  { ic: 'eye', stamp: 'ARCHITECT-SMITH', name: 'Project architecture', desc: '🧭 What the app is, its modules, data flow, data model, and entrypoints — the matrix of the codebase. Every claim validated against a real file.' },
+  { ic: 'package', stamp: 'STACK-MAP', name: 'Stack & commands', desc: '⚙️ The real stack, entrypoints, and the build/test/deploy commands an agent should run — parsed from manifests and CI, never invented.' },
+  { ic: 'shield', stamp: 'BOUNDARIES', name: 'Do-not-touch', desc: '🚧 Lockfiles, generated output, and env files an agent must not hand-edit — with the reason it must not.' },
+  { ic: 'rocket', stamp: 'OPS-SMITHS', name: 'Operational risk', desc: '🚨 Deploy traps, secret leaks, and cron ghosts. The ops layer hanging off the architecture, not the headline.' },
+  { ic: 'bug', stamp: 'FRAGILITY', name: 'Fragile hotspots', desc: '🔥 Code that churns hard over the last year. Where bugs live. Docs and lockfiles excluded.' },
+  { ic: 'eye', stamp: 'ORACLE', name: 'Two oracles', desc: '🔮 The Validation Oracle re-reads each claim against its file — hallucinations die here. The Self-Improvement Oracle keeps the skill\'s memory.' },
 ]
 
 function card(r) {
@@ -285,9 +291,9 @@ function skillPanel(r) {
   const lines = f => (f.body.match(/\n/g) || []).length + 1
   const tree = built.files.map((f, i) => `<li data-fi="${i}"><span class="tf">${esc(f.path)}</span><span class="tl">${lines(f)}L</span></li>`).join('')
   const files = built.files.map((f, i) => `<details class="sf"${i === 0 ? ' open' : ''}><summary>${I.file}<span class="sfp">${esc(f.path)}</span><span class="sfl">${lines(f)} lines</span></summary><pre class="md-raw">${esc(f.body)}</pre><div class="md-rich">${mdToHtml(f.body)}</div></details>`).join('')
-  return `<div class="skillfolder">
+  return `<div class="skillfolder rich">
     <p class="explain">A Claude Code skill is a <b>folder</b>, not a file. <code>${esc(built.name)}/SKILL.md</code> is what Claude reads first, and it points straight at <code>references/architecture.md</code> — the project's map: what it is, its modules, data flow, and entrypoints. The other <code>references/</code> files cover real commands, do-not-touch boundaries, and operational risk; <code>memory.md</code> is the Self-Improvement Oracle's long-term memory. Every claim cites a file or says <b>unknown</b>.</p>
-    <div class="tree"><div class="treehd">${I.repo}<b>${esc(built.name)}/</b>${stamp(built.files.length + ' FILES · FORGED')}<button type="button" class="md-toggle" aria-pressed="false">${I.eye} rich text</button></div><ul>${tree}</ul></div>
+    <div class="tree"><div class="treehd">${I.repo}<b>${esc(built.name)}/</b>${stamp(built.files.length + ' FILES · FORGED')}<button type="button" class="md-toggle" aria-pressed="true">${I.file} raw markdown</button></div><ul>${tree}</ul></div>
     ${files}</div>`
 }
 
@@ -304,11 +310,15 @@ function repoPage(r) {
   const moduleRows = (fr?.modules || []).map(mo => ({ label: mo.module + '/', value: Math.round(mo.share * 100), danger: mo.share >= 0.8 }))
   const soRows = (fr?.singleOwner || []).map(s => ({ label: s.file.split('/').pop(), full: s.file, value: s.commits, danger: true }))
   const couplingRows = (fr?.coupling || []).map(c => ({ label: `${c.a.split('/').pop()} ↔ ${c.b.split('/').pop()}`, full: `${c.a} ↔ ${c.b}`, value: c.count }))
+  const contribRows = (fr?.topContributors || []).map(t => ({ label: t.name, value: t.commits }))
+  const sevRows = [{ label: 'High', value: h, danger: true }, { label: 'Medium', value: m }, { label: 'Low', value: l }].filter(x => x.value)
   const signals = [
     chart(I.layers, 'Architecture coverage', barChart(archCoverage(r.architecture))),
     fr?.busFactor ? chart(I.bus, 'Knowledge risk', busFactorBlock(fr)) : '',
+    sevRows.length ? chart(I.high, 'Findings by severity', barChart(sevRows)) : '',
     soRows.length ? chart(I.file, 'Single-owner files', barChart(soRows)) : '',
     moduleRows.length ? chart(I.users, 'Module ownership', barChart(moduleRows, { unit: '%' })) : '',
+    contribRows.length ? chart(I.users, 'Top contributors', barChart(contribRows)) : '',
     couplingRows.length ? chart(I.branch, 'Change coupling', barChart(couplingRows)) : '',
   ].filter(Boolean).join('')
   const msec = (ico, label, val) => `<span class="m">${I[ico] || ''}${label} <b>${esc(val)}</b></span>`
@@ -343,6 +353,7 @@ function repoPage(r) {
 
 mkdirSync(outDir, { recursive: true })
 if (HAS_HERO) copyFileSync(HERO_SRC, join(outDir, 'hero.webp'))
+if (HAS_LOGO) copyFileSync(LOGO_SRC, join(outDir, 'logo.webp'))
 writeFileSync(join(outDir, 'index.html'), indexPage())
 for (const r of data) writeFileSync(join(outDir, `${r.repo}.html`), repoPage(r))
 process.stdout.write('wrote ' + (data.length + 1) + ' pages\n')
