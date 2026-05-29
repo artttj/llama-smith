@@ -28,3 +28,19 @@ test('computeForensics reports a bus factor, risk tier, and module ownership', (
   assert.ok(['CRITICAL', 'HIGH', 'MODERATE', 'GOOD'].includes(fr.risk))
   assert.ok(fr.modules.some(m => m.module === 'src' && m.owner === 'alice'))
 })
+
+const coupledLog = ['@@@a', 'x.js', 'y.js', '@@@b', 'x.js', 'y.js', '@@@a', 'x.js', 'y.js'].join('\n')
+
+test('computeForensics surfaces change coupling for files that co-change', () => {
+  const fr = computeForensics(coupledLog)
+  const pair = fr.coupling[0]
+  assert.ok(pair && [pair.a, pair.b].sort().join() === 'x.js,y.js')
+  assert.equal(pair.count, 3)
+})
+
+test('computeForensics counts contributors and single-owner ratio', () => {
+  const fr = computeForensics(coupledLog)
+  assert.equal(fr.contributors, 2)
+  assert.ok(fr.topContributors.length >= 1)
+  assert.ok(fr.singleOwnerRatio >= 0 && fr.singleOwnerRatio <= 1)
+})
