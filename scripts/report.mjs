@@ -243,7 +243,7 @@ function indexPage() {
   const famous = data.filter(r => r.group !== 'wild' && r.group !== 'boring')
   const wild = data.filter(r => r.group === 'wild' || r.group === 'boring')
   const heroArt = HAS_HERO
-    ? `<div class="badge-card"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl2"></span><span class="corner br"></span><img class="hero-img" src="hero.webp" width="700" height="1244" alt="llama-smith — a Matrix Agent Smith llama rendered in green code"></div>`
+    ? `<div class="badge-card"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl2"></span><span class="corner br"></span><img class="hero-img" src="hero.webp" width="620" height="620" alt="llama-smith — a Matrix Agent Smith llama emblem"></div>`
     : `<div class="badge-card" style="padding:2rem 3rem"><span class="bt" style="font-size:2rem;color:var(--green-hot)">llama·smith</span></div>`
   const body = `${brandbar()}
   <header class="hero">
