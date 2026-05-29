@@ -53,6 +53,9 @@ const I = {
   copy: SVG('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/>'),
   arrow: SVG('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
   branch: SVG('<line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>'),
+  bus: SVG('<path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/>'),
+  users: SVG('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  layers: SVG('<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'),
 }
 const SMITH_ICON = { deploy: 'rocket', secret: 'key', cron: 'cron', ci: 'branch', scar: 'bug' }
 const SMITH_STAMP = { deploy: 'DEPLOY-SMITH', secret: 'SECRET-SMITH', cron: 'CRON-SMITH', ci: 'CI-SMITH', scar: 'SCAR-SMITH' }
@@ -71,7 +74,8 @@ requestAnimationFrame(()=>setTimeout(f,55))})();}`
 const FILES_JS = `document.querySelectorAll('.skillfolder').forEach(F=>{const D=[...F.querySelectorAll('.sf')];
 D.forEach(d=>d.addEventListener('toggle',()=>{if(d.open)D.forEach(o=>{if(o!==d)o.open=false})}));
 F.querySelectorAll('[data-fi]').forEach(el=>el.addEventListener('click',()=>{const i=+el.dataset.fi;D.forEach((o,j)=>o.open=(j===i));D[i].scrollIntoView({behavior:'smooth',block:'start'})}));
-D.forEach(d=>d.querySelector('summary').addEventListener('click',()=>{if(!d.open)setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'nearest'}),0)}));});`
+D.forEach(d=>d.querySelector('summary').addEventListener('click',()=>{if(!d.open)setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'nearest'}),0)}));
+const t=F.querySelector('.md-toggle');if(t)t.addEventListener('click',()=>{const on=F.classList.toggle('rich');t.setAttribute('aria-pressed',on);t.lastChild.textContent=on?' raw markdown':' rich text'});});`
 
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -97,6 +101,86 @@ function repoBlurb(r) {
   else if (m + l) verdict = `mostly clean — ${m + l} minor note${m + l > 1 ? 's' : ''}, nothing critical`
   else verdict = 'pipeline came back clean, nothing to hide'
   return `${spine} — ${verdict}.`
+}
+
+const ownerOf = full => (full.includes('/') ? full.split('/')[0] : '')
+const avatarImg = (full, cls = '') => {
+  const o = ownerOf(full)
+  return o ? `<img class="avatar ${cls}" src="https://github.com/${esc(o)}.png?size=80" width="80" height="80" loading="lazy" alt="${esc(o)} avatar">` : ''
+}
+
+const mdInline = s => esc(s)
+  .replace(/`([^`]+)`/g, '<code>$1</code>')
+  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+  .replace(/_\(([^)]+)\)_/g, '<em>($1)</em>')
+
+function mdToHtml(md) {
+  const out = []
+  let inList = false, para = []
+  const flushPara = () => { if (para.length) { out.push(`<p>${mdInline(para.join(' '))}</p>`); para = [] } }
+  const flushList = () => { if (inList) { out.push('</ul>'); inList = false } }
+  for (const raw of md.split('\n')) {
+    const line = raw.replace(/\s+$/, '')
+    if (!line.trim()) { flushPara(); flushList(); continue }
+    const h = line.match(/^(#{1,4})\s+(.*)$/)
+    if (h) { flushPara(); flushList(); out.push(`<h${h[1].length}>${mdInline(h[2])}</h${h[1].length}>`); continue }
+    if (/^---+$/.test(line)) { flushPara(); flushList(); out.push('<hr>'); continue }
+    if (/^>\s?/.test(line)) { flushPara(); flushList(); out.push(`<blockquote>${mdInline(line.replace(/^>\s?/, ''))}</blockquote>`); continue }
+    if (/^[-*]\s+/.test(line)) { flushPara(); if (!inList) { out.push('<ul>'); inList = true } out.push(`<li>${mdInline(line.replace(/^[-*]\s+/, ''))}</li>`); continue }
+    para.push(line.trim())
+  }
+  flushPara(); flushList()
+  return out.join('\n')
+}
+
+const AREA_LABELS = { overview: 'Overview', modules: 'Modules', dataflow: 'Data flow', datamodel: 'Data model', entrypoints: 'Entrypoints', abstractions: 'Concepts' }
+const RISK_TIER = { CRITICAL: 'high', HIGH: 'med', MODERATE: 'med', GOOD: 'low' }
+
+const chart = (icon, title, body) => (body ? `<figure class="chart"><figcaption>${icon}${title}</figcaption>${body}</figure>` : '')
+
+function barChart(rows, { unit = '' } = {}) {
+  if (!rows.length) return ''
+  const max = Math.max(...rows.map(r => r.value), 1)
+  const row = r => `<div class="bc-row${r.danger ? ' danger' : ''}">
+      <span class="bc-label" title="${esc(r.full || r.label)}">${esc(r.label)}</span>
+      <span class="bc-track"><i style="width:${Math.max(3, Math.round(r.value / max * 100))}%"></i></span>
+      <span class="bc-val">${r.value.toLocaleString()}${unit}${r.danger ? '<span class="bc-flag">solo</span>' : ''}</span>
+    </div>`
+  return `<div class="barchart" role="img" aria-label="bar chart">${rows.map(row).join('')}</div>`
+}
+
+function busFactorBlock(fr) {
+  const band = ['CRITICAL', 'HIGH', 'MODERATE', 'GOOD']
+    .map(t => `<span class="bf-seg${t === fr.risk ? ' on ' + RISK_TIER[t] : ''}">${t}</span>`).join('')
+  const people = (fr.keyPeople || []).slice(0, 3).map(p => esc(p.name)).join(', ')
+  return `<div class="busfactor">
+    <div class="bf-num">${fr.busFactor}<span class="bf-cap">bus factor</span></div>
+    <div class="bf-band">${band}</div>
+    ${people ? `<p class="bf-note">${people}${fr.keyPeople.length > 3 ? ' and others' : ''} hold most of the code.</p>` : ''}
+  </div>`
+}
+
+function archCoverage(architecture) {
+  const counts = Object.keys(AREA_LABELS).map(area => ({ label: AREA_LABELS[area], value: (architecture || []).filter(a => a.area === area).length }))
+  return counts.filter(c => c.value)
+}
+
+const SMITH_LABEL = { deploy: 'Deploy', secret: 'Secret', cron: 'Cron', ci: 'CI' }
+function corpusCharts() {
+  const shortName = r => repoFull(r).split('/').pop()
+  const smithCounts = {}
+  for (const r of data) for (const f of (r.opsFindings || [])) smithCounts[f.smith] = (smithCounts[f.smith] || 0) + 1
+  const findingRows = Object.entries(smithCounts).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: SMITH_LABEL[k] || k, value: v, danger: k === 'secret' }))
+  const archRows = data.map(r => ({ label: shortName(r), value: (r.architecture || []).length })).filter(r => r.value).sort((a, b) => b.value - a.value)
+  const busRows = data.filter(r => r.forensics?.busFactor).map(r => ({ label: shortName(r), value: r.forensics.busFactor, danger: r.forensics.busFactor <= 2 })).sort((a, b) => a.value - b.value)
+  const charts = [
+    chart(I.scan, 'Findings by Smith', barChart(findingRows)),
+    chart(I.layers, 'Architecture facts per repo', barChart(archRows)),
+    busRows.length ? chart(I.bus, 'Bus factor by repo', barChart(busRows)) : '',
+  ].filter(Boolean).join('')
+  if (!charts) return ''
+  return `<div class="sec"><span class="chip">${I.zap} Signals across the corpus</span><h2>Read from ${data.length} repos</h2><p class="sub">Aggregate facts from every scan — findings by Smith, how much architecture each map captured, and where knowledge concentrates.</p></div><div class="charts">${charts}</div>`
 }
 
 function glitchFeed() {
@@ -133,7 +217,7 @@ function card(r) {
       <div class="legend"><span class="h"><span class="d"></span><b>${h}</b> high</span><span class="m"><span class="d"></span><b>${m}</b> med</span><span class="l"><span class="d"></span><b>${l}</b> low</span></div></div>`
     : `<div class="sevbar"><div class="legend"><span>${st === 'failed' ? 'scan failed' : 'no findings — clean'}</span></div></div>`
   return `<a class="card ${st === 'failed' ? 'glitchfail' : ''}" href="${esc(r.repo)}.html">
-    <div class="head"><span class="cn"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</span></div>
+    <div class="head">${avatarImg(full)}<span class="cn"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</span></div>
     <div class="meta"><span class="pill stack">${esc(repoStack(r))}</span><span class="pill status ${st}">${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</span>${meta}</div>
     <p class="blurb">${esc(repoBlurb(r))}</p>
     ${sev}
@@ -177,6 +261,7 @@ function indexPage() {
   <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>The most-used repos on earth</h2><p class="sub">Click a repo for its full forensic report, churn map, and forged skill.</p></div>
   <div class="grid">${famous.map(card).join('')}</div>
   ${wild.length ? `<div class="sec"><span class="chip">${I.eye} In the wild</span><h2>Random low-star repos</h2><p class="sub">Does it stay honest when there's little to find?</p></div><div class="grid">${wild.map(card).join('')}</div>` : ''}
+  ${corpusCharts()}
   <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
   <div class="types">${TYPES.map(t => `<div class="type"><div class="th">${I[t.ic]}<h3>${esc(t.name)}</h3></div>${stamp(t.stamp)}<p>${esc(t.desc)}</p></div>`).join('')}</div>
   <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>The scariest findings, ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
@@ -199,10 +284,10 @@ function skillPanel(r) {
   )
   const lines = f => (f.body.match(/\n/g) || []).length + 1
   const tree = built.files.map((f, i) => `<li data-fi="${i}"><span class="tf">${esc(f.path)}</span><span class="tl">${lines(f)}L</span></li>`).join('')
-  const files = built.files.map((f, i) => `<details class="sf"${i === 0 ? ' open' : ''}><summary>${I.file}<span class="sfp">${esc(f.path)}</span><span class="sfl">${lines(f)} lines</span></summary><pre>${esc(f.body)}</pre></details>`).join('')
+  const files = built.files.map((f, i) => `<details class="sf"${i === 0 ? ' open' : ''}><summary>${I.file}<span class="sfp">${esc(f.path)}</span><span class="sfl">${lines(f)} lines</span></summary><pre class="md-raw">${esc(f.body)}</pre><div class="md-rich">${mdToHtml(f.body)}</div></details>`).join('')
   return `<div class="skillfolder">
     <p class="explain">A Claude Code skill is a <b>folder</b>, not a file. <code>${esc(built.name)}/SKILL.md</code> is what Claude reads first, and it points straight at <code>references/architecture.md</code> — the project's map: what it is, its modules, data flow, and entrypoints. The other <code>references/</code> files cover real commands, do-not-touch boundaries, and operational risk; <code>memory.md</code> is the Self-Improvement Oracle's long-term memory. Every claim cites a file or says <b>unknown</b>.</p>
-    <div class="tree"><div class="treehd">${I.repo}<b>${esc(built.name)}/</b>${stamp(built.files.length + ' FILES · FORGED')}</div><ul>${tree}</ul></div>
+    <div class="tree"><div class="treehd">${I.repo}<b>${esc(built.name)}/</b>${stamp(built.files.length + ' FILES · FORGED')}<button type="button" class="md-toggle" aria-pressed="false">${I.eye} rich text</button></div><ul>${tree}</ul></div>
     ${files}</div>`
 }
 
@@ -211,8 +296,21 @@ function repoPage(r) {
   const st = statusOf(r)
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
   const leaks = r.nonCodeLeaks || [], hot = r.newCodeHotspots || []
+  const fr = r.forensics
+  const soSet = new Set((fr?.singleOwner || []).map(s => s.file))
   const oldCol = leaks.length ? `<ul>${leaks.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '<p class="empty">none recorded</p>'
-  const newCol = hot.length ? `<ul>${hot.map(x => `<li><span>${esc(x.file.split('/').pop())}</span><b>${x.edits}</b></li>`).join('')}</ul>` : '<p class="empty">churn unavailable</p>'
+  const hotRows = hot.map(x => ({ label: x.file.split('/').pop(), full: x.file, value: x.edits, danger: soSet.has(x.file) }))
+  const newCol = hot.length ? barChart(hotRows) : '<p class="empty">churn unavailable</p>'
+  const moduleRows = (fr?.modules || []).map(mo => ({ label: mo.module + '/', value: Math.round(mo.share * 100), danger: mo.share >= 0.8 }))
+  const soRows = (fr?.singleOwner || []).map(s => ({ label: s.file.split('/').pop(), full: s.file, value: s.commits, danger: true }))
+  const couplingRows = (fr?.coupling || []).map(c => ({ label: `${c.a.split('/').pop()} ↔ ${c.b.split('/').pop()}`, full: `${c.a} ↔ ${c.b}`, value: c.count }))
+  const signals = [
+    chart(I.layers, 'Architecture coverage', barChart(archCoverage(r.architecture))),
+    fr?.busFactor ? chart(I.bus, 'Knowledge risk', busFactorBlock(fr)) : '',
+    soRows.length ? chart(I.file, 'Single-owner files', barChart(soRows)) : '',
+    moduleRows.length ? chart(I.users, 'Module ownership', barChart(moduleRows, { unit: '%' })) : '',
+    couplingRows.length ? chart(I.branch, 'Change coupling', barChart(couplingRows)) : '',
+  ].filter(Boolean).join('')
   const msec = (ico, label, val) => `<span class="m">${I[ico] || ''}${label} <b>${esc(val)}</b></span>`
   const sevMeta = (h + m + l)
     ? `<span class="m sev">findings <span class="d dh"></span><b>${h}</b> <span class="d dm"></span><b>${m}</b> <span class="d dl"></span><b>${l}</b></span>`
@@ -220,7 +318,7 @@ function repoPage(r) {
   const body = `${brandbar()}
   <header class="repo">
     <a class="back" href="index.html">${I.arrow} all scanned sites</a>
-    <div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div>
+    <div class="repohead">${avatarImg(full, 'lg')}<div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div></div>
     <p class="repoblurb">${esc(repoBlurb(r))}</p>
     <div class="metastrip">
       ${msec('branch', 'lang', repoStack(r))}
@@ -234,7 +332,8 @@ function repoPage(r) {
   <div class="sec" style="margin-top:1.5rem"><span class="chip">${I.file} The forge</span><h2>The skill it forged</h2><p class="sub">The whole artifact — every file Claude inherits. The findings live in the reference files, each cited to a real path.</p></div>
   ${skillPanel(r)}
   <div class="verdict ${st === 'failed' ? 'fail' : ''}">${stamp(st === 'failed' ? 'INCOMPLETE' : 'ORACLE PASS')}${esc(r.verdict || 'No verdict recorded.')}</div>
-  <div class="sec"><span class="chip">${I.branch} Churn map</span><h2>Code-only fragility</h2><p class="sub">${leaks.length ? 'Old churn flagged docs and lockfiles. The new map counts source only.' : 'Most-changed source files. Docs, lockfiles, and generated files are excluded.'}</p></div>
+  ${signals ? `<div class="sec"><span class="chip">${I.eye} Signals</span><h2>What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, and ownership — read from the repo, not estimated.</p></div><div class="charts">${signals}</div>` : ''}
+  <div class="sec"><span class="chip">${I.branch} Churn map</span><h2>Code-only fragility</h2><p class="sub">${leaks.length ? 'Old churn flagged docs and lockfiles. The new map counts source only.' : 'Most-changed source files. Docs, lockfiles, and generated files excluded. Single-owner hotspots are flagged.'}</p></div>
   ${leaks.length
       ? `<div class="churn"><div class="col old"><h4>Old churn — leaked non-code</h4>${oldCol}</div><div class="col new"><h4>New — code-only hotspots</h4>${newCol}</div></div>`
       : `<div class="col new">${newCol}</div>`}
