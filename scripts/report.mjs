@@ -31,6 +31,8 @@ const repoStars = r => r.stars ?? null
 const readAsset = f => { const p = join(LS, 'assets', f); return existsSync(p) ? readFileSync(p, 'utf8').replace(/\n+$/, '') : '' }
 const HERO_SRC = join(LS, 'assets', 'hero.webp')
 const HAS_HERO = existsSync(HERO_SRC)
+// Inline the hero as a data URI so every page is a self-contained file to share.
+const HERO_DATA = HAS_HERO ? `data:image/webp;base64,${readFileSync(HERO_SRC).toString('base64')}` : ''
 
 // Lucide line icons, inlined (offline, themeable via currentColor).
 const SVG = i => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${i}</svg>`
@@ -241,19 +243,20 @@ const shortPath = f => f.split('/').slice(-2).join('/')
 function donut(segs, { centerNum, centerCap = '' } = {}) {
   const live = segs.filter(s => s.value > 0)
   const total = segs.reduce((s, x) => s + x.value, 0) || 1
-  const C = +(2 * Math.PI * 42).toFixed(1)
+  const R = 42, SW = 13, C = 2 * Math.PI * R
+  const gap = live.length > 1 ? 5 : 0
   let acc = 0
   const arcs = live.map(s => {
-    const len = +(C * s.value / total).toFixed(2)
-    const arc = `<circle cx="60" cy="60" r="42" fill="none" stroke="${s.color}" stroke-width="16" stroke-dasharray="${len} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 60 60)"></circle>`
-    acc += len
+    const seg = C * s.value / total
+    const len = Math.max(0.5, seg - gap)
+    const arc = `<circle class="arc" cx="60" cy="60" r="${R}" fill="none" stroke="${s.color}" stroke-width="${SW}" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-(acc + gap / 2)).toFixed(2)}" transform="rotate(-90 60 60)"></circle>`
+    acc += seg
     return arc
   }).join('')
-  const legend = live.map(s => `<span class="dl"><span class="dd" style="background:${s.color}"></span>${esc(s.label)} <b>${s.value.toLocaleString()}</b></span>`).join('')
-  return `<div class="donut"><svg viewBox="0 0 120 120" class="donut-svg" role="img" aria-label="${esc(live.map(s => `${s.label} ${s.value}`).join(', '))}">
-    <circle cx="60" cy="60" r="42" fill="none" stroke="var(--line)" stroke-width="16"></circle>${arcs}
-    <text x="60" y="58" class="donut-num">${centerNum ?? total}</text><text x="60" y="74" class="donut-cap">${esc(centerCap)}</text>
-  </svg><div class="donut-legend">${legend}</div></div>`
+  const legend = live.map(s => `<span class="dl"><span class="dd" style="background:${s.color}"></span><span class="dn">${esc(s.label)}</span><b style="color:${s.color}">${s.value.toLocaleString()}</b></span>`).join('')
+  return `<div class="donut"><div class="donut-disc"><svg viewBox="0 0 120 120" class="donut-svg" role="img" aria-label="${esc(live.map(s => `${s.label} ${s.value}`).join(', '))}">
+    <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--line)" stroke-width="${SW}"></circle>${arcs}
+  </svg><div class="donut-mid"><b>${centerNum ?? total}</b><span>${esc(centerCap)}</span></div></div><div class="donut-legend">${legend}</div></div>`
 }
 
 function busFactorBlock(fr) {
@@ -343,7 +346,7 @@ function indexPage() {
   const famous = data.filter(r => r.group !== 'wild' && r.group !== 'boring')
   const wild = data.filter(r => r.group === 'wild' || r.group === 'boring')
   const heroArt = HAS_HERO
-    ? `<div class="badge-card"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl2"></span><span class="corner br"></span><img class="hero-img" src="hero.webp" width="620" height="620" alt="llama-smith — a Matrix Agent Smith llama emblem"></div>`
+    ? `<div class="badge-card"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl2"></span><span class="corner br"></span><img class="hero-img" src="${HERO_DATA}" width="620" height="620" alt="llama-smith — a Matrix Agent Smith llama emblem"></div>`
     : `<div class="badge-card" style="padding:2rem 3rem"><span class="bt" style="font-size:2rem;color:var(--green-hot)">llama·smith</span></div>`
   const body = `${brandbar()}
   <header class="hero">
@@ -452,7 +455,6 @@ function repoPage(r) {
 }
 
 mkdirSync(outDir, { recursive: true })
-if (HAS_HERO) copyFileSync(HERO_SRC, join(outDir, 'hero.webp'))
 writeFileSync(join(outDir, 'index.html'), indexPage())
 for (const r of data) writeFileSync(join(outDir, `${r.repo}.html`), repoPage(r))
 process.stdout.write('wrote ' + (data.length + 1) + ' pages\n')

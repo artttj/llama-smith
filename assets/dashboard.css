@@ -248,14 +248,18 @@ footer b{color:var(--green)}
 .bc-val{color:var(--green-hot);font-variant-numeric:tabular-nums;font-weight:600;font-size:.74rem;white-space:nowrap}
 .bc-row.danger .bc-val{color:var(--high)}
 .bc-flag{color:var(--high);font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;margin-left:.3em}
-.donut{display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap}
-.donut-svg{width:118px;height:118px;flex:none}
-.donut-num{fill:var(--green-hot);font-size:1.7rem;font-weight:800;text-anchor:middle;font-family:var(--mono)}
-.donut-cap{fill:var(--dim);font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;text-anchor:middle}
-.donut-legend{display:grid;gap:.45rem;font-size:.8rem;color:var(--text)}
-.donut-legend .dl{display:flex;align-items:center;gap:.5em}
-.donut-legend .dd{width:11px;height:11px;border-radius:3px;flex:none}
-.donut-legend b{font-variant-numeric:tabular-nums;color:var(--green-hot);margin-left:auto;padding-left:1rem}
+.donut{display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap}
+.donut-disc{position:relative;width:116px;height:116px;flex:none}
+.donut-svg{width:116px;height:116px;display:block}
+.donut-mid{position:absolute;inset:0;display:grid;place-items:center;align-content:center;line-height:1;pointer-events:none}
+.donut-mid b{font-size:1.9rem;font-weight:800;color:var(--green-hot);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.donut-mid span{margin-top:.2rem;font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.donut-legend{display:grid;gap:.25rem;font-size:.8rem;min-width:9rem}
+.donut-legend .dl{display:flex;align-items:center;gap:.55em;padding:.22rem .4rem;border-radius:var(--r-xs);transition:background .15s}
+.donut-legend .dl:hover{background:var(--surface-2)}
+.donut-legend .dd{width:10px;height:10px;border-radius:3px;flex:none}
+.donut-legend .dn{color:var(--dim)}
+.donut-legend b{font-variant-numeric:tabular-nums;font-weight:700;margin-left:auto;padding-left:1.2rem}
 .busfactor{display:flex;flex-direction:column;gap:.9rem}
 .bf-head{display:flex;align-items:center;gap:.9rem}
 .bf-bus svg{width:48px;height:48px;color:var(--green-hot);flex:none}
