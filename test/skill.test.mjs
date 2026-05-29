@@ -109,6 +109,30 @@ test('boundaries.md renders do-not-touch paths with reasons, omitted when empty'
   assert.ok(!buildSkillFiles(repo, {}).files.some(f => f.path === 'references/boundaries.md'), 'no boundaries file when none detected')
 })
 
+test('AGENTS.md is forged with the full map for opencode and cross-tool use', () => {
+  const built = buildSkillFiles(repo, {
+    name: 'demo-smith',
+    architecture: [{ area: 'overview', claim: 'an HTTP API', file: 'a.js' }],
+    commands: [{ cmd: 'npm test', file: 'package.json', kind: 'test' }],
+    forensics: { busFactor: 2, risk: 'HIGH', keyPeople: [{ name: 'al', files: 3 }], singleOwner: [{ file: 'a.js', owner: 'al', share: 0.9, contributors: 1 }], modules: [] },
+  })
+  const agents = built.files.find(f => f.path === 'AGENTS.md')
+  assert.ok(agents, 'AGENTS.md present')
+  assert.match(agents.body, /## Architecture[\s\S]*HTTP API/)
+  assert.match(agents.body, /## Operational risks/)
+  assert.match(agents.body, /Bus factor: 2/)
+})
+
+test('forensics.md renders bus factor and single-owner files when present', () => {
+  const built = buildSkillFiles(repo, { forensics: { busFactor: 1, risk: 'CRITICAL', keyPeople: [{ name: 'al', files: 5 }], singleOwner: [{ file: 'core.ts', owner: 'al', share: 0.95, contributors: 1 }], modules: [{ module: 'src', owner: 'al', share: 0.8, contributors: 2 }] } })
+  const fr = built.files.find(f => f.path === 'references/forensics.md')
+  assert.ok(fr, 'forensics.md present when bus factor known')
+  assert.match(fr.body, /Bus factor: 1 \(CRITICAL\)/)
+  assert.match(fr.body, /Single-owner files[\s\S]*core\.ts.*95%/)
+  assert.match(fr.body, /Module ownership[\s\S]*src/)
+  assert.ok(!buildSkillFiles(repo, {}).files.some(f => f.path === 'references/forensics.md'), 'omitted without forensics')
+})
+
 test('only graduated (>=0.7) memory renders in memory.md', () => {
   const lessons = [{ pattern: 'use pnpm', confidence: 0.9 }, { pattern: 'maybe flaky', confidence: 0.4 }]
   const body = buildSkillFiles(repo, { lessons }).files.find(f => f.path === 'memory.md').body
