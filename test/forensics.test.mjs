@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { computeForensics, parseAuthorChurn } from '../lib/forensics.mjs'
+import { computeForensics, parseAuthorChurn, parseCommits, githubLogin } from '../lib/forensics.mjs'
 
 const log = [
   '@@@alice', 'src/auth.js', 'src/db.js',
@@ -36,6 +36,19 @@ test('computeForensics surfaces change coupling for files that co-change', () =>
   const pair = fr.coupling[0]
   assert.ok(pair && [pair.a, pair.b].sort().join() === 'x.js,y.js')
   assert.equal(pair.count, 3)
+})
+
+test('githubLogin extracts username from noreply commit emails', () => {
+  assert.equal(githubLogin(['123+octocat@users.noreply.github.com']), 'octocat')
+  assert.equal(githubLogin(['dougwilson@users.noreply.github.com']), 'dougwilson')
+  assert.equal(githubLogin(['real@example.com']), null)
+})
+
+test('parseCommits captures author and email; topContributors carry a login', () => {
+  const log = '@@@Doug|123+dougwilson@users.noreply.github.com\nsrc/a.js\n@@@Doug|123+dougwilson@users.noreply.github.com\nsrc/a.js'
+  assert.equal(parseCommits(log)[0].email, '123+dougwilson@users.noreply.github.com')
+  const fr = computeForensics(log)
+  assert.equal(fr.topContributors[0].login, 'dougwilson')
 })
 
 test('computeForensics counts contributors and single-owner ratio', () => {

@@ -76,6 +76,9 @@ F.querySelectorAll('[data-fi]').forEach(el=>el.addEventListener('click',()=>{con
 D.forEach(d=>d.querySelector('summary').addEventListener('click',()=>{if(!d.open)setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'nearest'}),0)}));
 const t=F.querySelector('.md-toggle');if(t)t.addEventListener('click',()=>{const on=F.classList.toggle('rich');t.setAttribute('aria-pressed',on);t.lastChild.textContent=on?' raw markdown':' rich text'});});`
 
+// Any avatar that 404s (bot accounts, renamed/deleted users) swaps to initials.
+const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(function(g){g.addEventListener('error',function(){var s=document.createElement('span');s.className=g.className+' broken';s.textContent=g.dataset.initials||'';s.title=g.alt||'';g.replaceWith(s)})});`
+
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
@@ -83,9 +86,13 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=jetbrains-mono:400,500,600,700,800">
 <style>${CSS}</style></head>
 <body><canvas id="rain"></canvas><div class="wrap">${body}</div>
-<script>${RAIN}${js}</script></body></html>`
+<script>${RAIN}${AVATAR_JS}${js}</script></body></html>`
 
 const brandbar = () => `<a class="brandbar" href="index.html"><span class="bt">llama<b>·</b>smith</span></a>`
+const siteFooter = () => `<footer>
+  <span class="foot-main">🦙 <b>llama·smith</b> — it reads your <b>ops</b>, not your vibes. Every claim cites a file.</span>
+  <span class="foot-sub">MIT © Artem Iagovdik · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
+</footer>`
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
 // Opinionated one-liner, grounded: the validated architecture overview is the
@@ -105,7 +112,7 @@ function repoBlurb(r) {
 const ownerOf = full => (full.includes('/') ? full.split('/')[0] : '')
 const avatarImg = (full, cls = '') => {
   const o = ownerOf(full)
-  return o ? `<img class="avatar ${cls}" src="https://github.com/${esc(o)}.png?size=80" width="80" height="80" loading="lazy" alt="${esc(o)} avatar">` : ''
+  return o ? `<img class="avatar ${cls}" src="https://github.com/${esc(o)}.png?size=80" width="80" height="80" loading="lazy" alt="${esc(o)} avatar" data-initials="${esc(o.slice(0, 2).toUpperCase())}">` : ''
 }
 
 // Allow relative paths and fragments; reject any non-http(s)/mailto scheme
@@ -143,6 +150,80 @@ const RISK_TIER = { CRITICAL: 'high', HIGH: 'med', MODERATE: 'med', GOOD: 'low' 
 
 const chart = (icon, title, body) => (body ? `<figure class="chart"><figcaption>${icon}${title}</figcaption>${body}</figure>` : '')
 
+// A single repo-health score from what the scan proved: operational severity,
+// bus factor, and knowledge concentration. Shown as a ring at the top.
+function vibeScore(r) {
+  const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
+  const fr = r.forensics
+  let s = 100 - (h * 12 + m * 5 + l * 2)
+  if (fr?.busFactor) {
+    if (fr.busFactor === 1) s -= 18
+    else if (fr.busFactor === 2) s -= 10
+    s -= Math.round((fr.singleOwnerRatio || 0) * 20)
+  }
+  s = Math.max(5, Math.min(100, s))
+  const grade = s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 55 ? 'D' : 'F'
+  const tier = s >= 80 ? 'low' : s >= 60 ? 'med' : 'high'
+  const emoji = s >= 80 ? '🟢' : s >= 60 ? '🟠' : '🔴'
+  return { score: s, grade, tier, emoji }
+}
+
+function vibeGauge(r) {
+  const { score, grade, tier } = vibeScore(r)
+  const R = 52, C = +(2 * Math.PI * R).toFixed(1)
+  const off = +(C * (1 - score / 100)).toFixed(1)
+  return `<div class="vibe vibe-${tier}" role="img" aria-label="vibe check score ${score} out of 100, grade ${grade}">
+    <div class="vibe-disc">
+      <svg viewBox="0 0 120 120" class="vibe-ring">
+        <circle class="vt" cx="60" cy="60" r="${R}"></circle>
+        <circle class="vp" cx="60" cy="60" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 60 60)"></circle>
+      </svg>
+      <div class="vibe-mid"><b>${score}</b><span>${grade}</span></div>
+    </div>
+    <div class="vibe-cap">VIBE CHECK</div>
+  </div>`
+}
+
+const vibeBadge = r => { const v = vibeScore(r); return `<span class="vibe-badge vibe-${v.tier}" title="vibe check ${v.score}/100, grade ${v.grade}">${v.emoji} ${v.score} ${v.grade}</span>` }
+
+// Contributor faces — real GitHub profile avatars where the commit email gives
+// us a username, name initials otherwise.
+function contributorStrip(fr) {
+  const people = fr?.topContributors || []
+  if (!people.length) return ''
+  const face = p => p.login
+    ? `<img class="face" src="https://github.com/${esc(p.login)}.png?size=72" width="44" height="44" loading="lazy" alt="${esc(p.name)}" title="${esc(p.name)} · ${p.commits} commits" data-initials="${esc(p.name.slice(0, 2).toUpperCase())}">`
+    : `<span class="face initials" title="${esc(p.name)} · ${p.commits} commits">${esc(p.name.slice(0, 2).toUpperCase())}</span>`
+  return `<div class="faces">${people.map(face).join('')}<span class="faces-cap">${fr.contributors} contributors</span></div>`
+}
+
+// Auto shields.io badges from the scan's real facts — stack, vibe, findings,
+// bus factor, architecture. labelColor matches the terminal palette.
+const TIERHEX = { low: '3ddc84', med: 'e0b341', high: 'e0563f' }
+const SHIELD = (label, message, color) => `<img class="shield" loading="lazy" height="20" alt="${esc(label)}: ${esc(message)}" src="https://img.shields.io/static/v1?style=flat-square&labelColor=3a4a3c&label=${encodeURIComponent(label)}&message=${encodeURIComponent(message)}&color=${color}">`
+function shieldRow(r) {
+  const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low'), tot = h + m + l
+  const fr = r.forensics, v = vibeScore(r)
+  const nodeVer = (r.stackFull || '').match(/node\s*([>=<\s.\d]+)/i)?.[1]?.trim()
+  return `<div class="shields">${[
+    SHIELD('stack', repoStack(r), '3ddc84'),
+    nodeVer ? SHIELD('node', nodeVer, '3ddc84') : '',
+    SHIELD('commits', (r.commits || 0).toLocaleString(), '3ddc84'),
+    fr?.contributors ? SHIELD('contributors', String(fr.contributors), '3ddc84') : '',
+    SHIELD('vibe', `${v.score} ${v.grade}`, TIERHEX[v.tier]),
+    SHIELD('findings', String(tot), h ? TIERHEX.high : tot ? TIERHEX.med : TIERHEX.low),
+    h ? SHIELD('critical', String(h), TIERHEX.high) : '',
+    fr?.busFactor ? SHIELD('bus factor', `${fr.busFactor} ${fr.risk}`, TIERHEX[RISK_TIER[fr.risk]] || '3ddc84') : '',
+    fr?.singleOwner?.length ? SHIELD('single-owner', String(fr.singleOwner.length), 'e0b341') : '',
+    (r.architecture || []).length ? SHIELD('architecture', `${r.architecture.length} facts`, '3ddc84') : '',
+    (r.commands || []).length ? SHIELD('commands', String(r.commands.length), '3ddc84') : '',
+    r.scanSeconds ? SHIELD('scan', `${r.scanSeconds}s`, '8a8f87') : '',
+    r.cloneMB != null ? SHIELD('clone', `${r.cloneMB} MB`, '8a8f87') : '',
+    SHIELD('forged by', 'llama-smith', '3ddc84'),
+    SHIELD('oracle', 'validated', '3ddc84'),
+  ].filter(Boolean).join('')}</div>`
+}
+
 function barChart(rows, { unit = '' } = {}) {
   if (!rows.length) return ''
   const max = Math.max(...rows.map(r => r.value), 1)
@@ -152,6 +233,27 @@ function barChart(rows, { unit = '' } = {}) {
       <span class="bc-val">${r.value.toLocaleString()}${unit}${r.danger ? '<span class="bc-flag">solo</span>' : ''}</span>
     </div>`
   return `<div class="barchart" role="img" aria-label="bar chart">${rows.map(row).join('')}</div>`
+}
+
+// Last two path segments, so many files named index.js stay distinct.
+const shortPath = f => f.split('/').slice(-2).join('/')
+
+function donut(segs, { centerNum, centerCap = '' } = {}) {
+  const live = segs.filter(s => s.value > 0)
+  const total = segs.reduce((s, x) => s + x.value, 0) || 1
+  const C = +(2 * Math.PI * 42).toFixed(1)
+  let acc = 0
+  const arcs = live.map(s => {
+    const len = +(C * s.value / total).toFixed(2)
+    const arc = `<circle cx="60" cy="60" r="42" fill="none" stroke="${s.color}" stroke-width="16" stroke-dasharray="${len} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 60 60)"></circle>`
+    acc += len
+    return arc
+  }).join('')
+  const legend = live.map(s => `<span class="dl"><span class="dd" style="background:${s.color}"></span>${esc(s.label)} <b>${s.value.toLocaleString()}</b></span>`).join('')
+  return `<div class="donut"><svg viewBox="0 0 120 120" class="donut-svg" role="img" aria-label="${esc(live.map(s => `${s.label} ${s.value}`).join(', '))}">
+    <circle cx="60" cy="60" r="42" fill="none" stroke="var(--line)" stroke-width="16"></circle>${arcs}
+    <text x="60" y="58" class="donut-num">${centerNum ?? total}</text><text x="60" y="74" class="donut-cap">${esc(centerCap)}</text>
+  </svg><div class="donut-legend">${legend}</div></div>`
 }
 
 function busFactorBlock(fr) {
@@ -221,7 +323,7 @@ function card(r) {
       <div class="legend"><span class="h"><span class="d"></span><b>${h}</b> high</span><span class="m"><span class="d"></span><b>${m}</b> med</span><span class="l"><span class="d"></span><b>${l}</b> low</span></div></div>`
     : `<div class="sevbar"><div class="legend"><span>${st === 'failed' ? 'scan failed' : 'no findings — clean'}</span></div></div>`
   return `<a class="card ${st === 'failed' ? 'glitchfail' : ''}" href="${esc(r.repo)}.html">
-    <div class="head">${avatarImg(full)}<span class="cn"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</span></div>
+    <div class="head">${avatarImg(full)}<span class="cn"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</span>${vibeBadge(r)}</div>
     <div class="meta"><span class="pill stack">${esc(repoStack(r))}</span><span class="pill status ${st}">${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</span>${meta}</div>
     <p class="blurb">${esc(repoBlurb(r))}</p>
     ${sev}
@@ -262,15 +364,15 @@ function indexPage() {
     <div class="stat">${I.file}<div class="n">${S.forged}</div><div class="l">skills forged</div></div>
     <div class="stat">${I.branch}<div class="n">${S.commits.toLocaleString()}</div><div class="l">commits read</div></div>
   </section>
-  <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>The most-used repos on earth</h2><p class="sub">Click a repo for its full forensic report, churn map, and forged skill.</p></div>
+  <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>🌍 Scanned under real conditions</h2><p class="sub">Click a repo for its vibe score, forensic charts, and the forged skill.</p></div>
   <div class="grid">${famous.map(card).join('')}</div>
   ${wild.length ? `<div class="sec"><span class="chip">${I.eye} In the wild</span><h2>Random low-star repos</h2><p class="sub">Does it stay honest when there's little to find?</p></div><div class="grid">${wild.map(card).join('')}</div>` : ''}
   ${corpusCharts()}
-  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
+  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>🧬 The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
   <div class="types">${TYPES.map(t => `<div class="type"><div class="th">${I[t.ic]}<h3>${esc(t.name)}</h3></div>${stamp(t.stamp)}<p>${esc(t.desc)}</p></div>`).join('')}</div>
-  <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>The scariest findings, ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
+  <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>⚡ The scariest findings, ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
   <div class="glitches">${glitchFeed()}</div>
-  <footer>Forged by <b>llama-smith</b> · it reads your <b>ops</b>, not your vibes · cartoon llama by <b>OpenMoji</b> (CC BY-SA 4.0), icons by Lucide (ISC)</footer>`
+  ${siteFooter()}`
   return shell('llama-smith · the construct', body)  // shell already includes RAIN
 }
 
@@ -299,53 +401,53 @@ function repoPage(r) {
   const full = repoFull(r), [org, name] = full.includes('/') ? full.split('/') : ['', full]
   const st = statusOf(r)
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
-  const leaks = r.nonCodeLeaks || [], hot = r.newCodeHotspots || []
+  const hot = r.newCodeHotspots || []
   const fr = r.forensics
   const soSet = new Set((fr?.singleOwner || []).map(s => s.file))
-  const oldCol = leaks.length ? `<ul>${leaks.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '<p class="empty">none recorded</p>'
-  const hotRows = hot.map(x => ({ label: x.file.split('/').pop(), full: x.file, value: x.edits, danger: soSet.has(x.file) }))
-  const newCol = hot.length ? barChart(hotRows) : '<p class="empty">churn unavailable</p>'
+  const hotRows = hot.slice(0, 6).map(x => ({ label: shortPath(x.file), full: x.file, value: x.edits, danger: soSet.has(x.file) }))
   const moduleRows = (fr?.modules || []).map(mo => ({ label: mo.module + '/', value: Math.round(mo.share * 100), danger: mo.share >= 0.8 }))
-  const soRows = (fr?.singleOwner || []).map(s => ({ label: s.file.split('/').pop(), full: s.file, value: s.commits, danger: true }))
-  const couplingRows = (fr?.coupling || []).map(c => ({ label: `${c.a.split('/').pop()} ↔ ${c.b.split('/').pop()}`, full: `${c.a} ↔ ${c.b}`, value: c.count }))
+  const couplingRows = (fr?.coupling || []).map(c => ({ label: `${shortPath(c.a)} ↔ ${shortPath(c.b)}`, full: `${c.a} ↔ ${c.b}`, value: c.count }))
   const contribRows = (fr?.topContributors || []).map(t => ({ label: t.name, value: t.commits }))
-  const sevRows = [{ label: 'High', value: h, danger: true }, { label: 'Medium', value: m }, { label: 'Low', value: l }].filter(x => x.value)
+  const sevDonut = (h + m + l) ? donut([
+    { label: 'High', value: h, color: 'var(--high)' }, { label: 'Medium', value: m, color: 'var(--medium)' }, { label: 'Low', value: l, color: 'var(--low)' },
+  ], { centerCap: 'findings' }) : ''
+  const so = fr?.singleOwner?.length || 0, codeN = fr?.codeFiles || 0
+  const ownDonut = codeN ? donut([
+    { label: 'Single-owner', value: so, color: 'var(--high)' }, { label: 'Shared', value: Math.max(0, codeN - so), color: 'var(--low)' },
+  ], { centerNum: codeN, centerCap: 'code files' }) : ''
   const signals = [
+    sevDonut ? chart(I.high, 'Findings by severity', sevDonut) : '',
+    ownDonut ? chart(I.users, 'Ownership split', ownDonut) : '',
     chart(I.layers, 'Architecture coverage', barChart(archCoverage(r.architecture))),
     fr?.busFactor ? chart(I.bus, 'Knowledge risk', busFactorBlock(fr)) : '',
-    sevRows.length ? chart(I.high, 'Findings by severity', barChart(sevRows)) : '',
-    soRows.length ? chart(I.file, 'Single-owner files', barChart(soRows)) : '',
+    hot.length ? chart(I.bug, 'Fragile hotspots', barChart(hotRows)) : '',
     moduleRows.length ? chart(I.users, 'Module ownership', barChart(moduleRows, { unit: '%' })) : '',
     contribRows.length ? chart(I.users, 'Top contributors', barChart(contribRows)) : '',
     couplingRows.length ? chart(I.branch, 'Change coupling', barChart(couplingRows)) : '',
   ].filter(Boolean).join('')
   const msec = (ico, label, val) => `<span class="m">${I[ico] || ''}${label} <b>${esc(val)}</b></span>`
-  const sevMeta = (h + m + l)
-    ? `<span class="m sev">findings <span class="d dh"></span><b>${h}</b> <span class="d dm"></span><b>${m}</b> <span class="d dl"></span><b>${l}</b></span>`
-    : `<span class="m">findings <b>${st === 'failed' ? '— scan failed' : '0 · clean'}</b></span>`
   const body = `${brandbar()}
   <header class="repo">
     <a class="back" href="index.html">${I.arrow} all scanned sites</a>
-    <div class="repohead">${avatarImg(full, 'lg')}<div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div></div>
-    <p class="repoblurb">${esc(repoBlurb(r))}</p>
+    <div class="repotop">
+      <div class="repohead">${avatarImg(full, 'lg')}<div class="rh-text"><div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div><p class="repoblurb">${esc(repoBlurb(r))}</p></div></div>
+      ${vibeGauge(r)}
+    </div>
     <div class="metastrip">
       ${msec('branch', 'lang', repoStack(r))}
       <span class="m">${st === 'failed' ? I.high : st === 'clean' ? I.shield : I.scan}status <b>${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</b></span>
       ${msec('branch', 'commits', (r.commits || 0).toLocaleString())}
       ${msec('cron', 'scan', (r.scanSeconds || 0) + 's')}
       ${r.cloneMB != null ? msec('package', 'clone', r.cloneMB + ' MB') : ''}
-      ${sevMeta}
+      ${(h + m + l) ? `<span class="m sev">findings <span class="d dh"></span><b>${h}</b> <span class="d dm"></span><b>${m}</b> <span class="d dl"></span><b>${l}</b></span>` : `<span class="m">findings <b>${st === 'failed' ? '— scan failed' : '0 · clean'}</b></span>`}
     </div>
+    ${shieldRow(r)}
   </header>
-  <div class="sec" style="margin-top:1.5rem"><span class="chip">${I.file} The forge</span><h2>The skill it forged</h2><p class="sub">The whole artifact — every file Claude inherits. The findings live in the reference files, each cited to a real path.</p></div>
+  ${signals ? `<div class="sec" style="margin-top:1.5rem"><span class="chip">${I.eye} Signals</span><h2>📊 What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, ownership, and churn — read from the repo, not estimated.</p></div>${contributorStrip(fr)}<div class="charts">${signals}</div>` : ''}
+  <div class="sec"><span class="chip">${I.file} The forge</span><h2>🛠️ The skill it forged</h2><p class="sub">The whole artifact — every file Claude inherits, each finding cited to a real path.</p></div>
   ${skillPanel(r)}
   <div class="verdict ${st === 'failed' ? 'fail' : ''}">${stamp(st === 'failed' ? 'INCOMPLETE' : 'ORACLE PASS')}${esc(r.verdict || 'No verdict recorded.')}</div>
-  ${signals ? `<div class="sec"><span class="chip">${I.eye} Signals</span><h2>What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, and ownership — read from the repo, not estimated.</p></div><div class="charts">${signals}</div>` : ''}
-  <div class="sec"><span class="chip">${I.branch} Churn map</span><h2>Code-only fragility</h2><p class="sub">${leaks.length ? 'Old churn flagged docs and lockfiles. The new map counts source only.' : 'Most-changed source files. Docs, lockfiles, and generated files excluded. Single-owner hotspots are flagged.'}</p></div>
-  ${leaks.length
-      ? `<div class="churn"><div class="col old"><h4>Old churn — leaked non-code</h4>${oldCol}</div><div class="col new"><h4>New — code-only hotspots</h4>${newCol}</div></div>`
-      : `<div class="col new">${newCol}</div>`}
-  <footer><b>llama-smith</b> · ${esc(full)} · every claim cites a file</footer>`
+  ${siteFooter()}`
   return shell(`llama-smith · ${full}`, body, FILES_JS)  // shell already includes RAIN
 }
 
