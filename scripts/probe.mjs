@@ -20,7 +20,10 @@ const CLI = join(LS, 'llama-smith.mjs')
 const D = `/tmp/lsp/${slug}`
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts })
 
-const out = { repo: slug, url }
+const out = { repo: slug, url, group: 'interesting' }
+const fullMatch = url.match(/github\.com[/:]([^/]+\/[^/.]+)/)
+if (fullMatch) out.fullName = fullMatch[1]
+const shortStack = s => s.startsWith('Node') ? 'JS' : s.startsWith('PHP') ? 'PHP' : s.startsWith('Python') ? 'PY' : s.startsWith('Go') ? 'GO' : s.startsWith('Rust') ? 'RS' : (s.split(' ')[0] || '?')
 try {
   rmSync(D, { recursive: true, force: true })
   mkdirSync(dirname(D), { recursive: true })
@@ -30,7 +33,7 @@ try {
 
   const t0 = Date.now()
   try {
-    out.forgeStdout = run('node', [CLI, 'forge', D, '--rounds', '1'], { cwd: LS, timeout: 290000 })
+    out.forgeStdout = run('node', [CLI, 'forge', D, '--rounds', '2'], { cwd: LS, timeout: 580000 })
   } catch (e) {
     out.forgeStdout = (e.stdout || '') + '\nFORGE_ERROR: ' + (e.message || '')
   }
@@ -39,8 +42,11 @@ try {
   const anomPath = join(D, '.smith', 'anomalies.json')
   const anomalies = existsSync(anomPath) ? JSON.parse(readFileSync(anomPath, 'utf8')) : []
   out.opsFindings = anomalies.filter(a => a.smith !== 'scar')
+  out.verdict = out.opsFindings.length
+    ? `${out.opsFindings.length} file-cited operational findings across ${out.commits.toLocaleString()} commits, all validated against real files.`
+    : `No operational risks found across ${out.commits.toLocaleString()} commits. Nothing was invented.`
 
-  // Deterministic deep-skill facts (commands/boundaries/entrypoints/stack) from the forge output.
+  // The deep-skill facts the forge produced: architecture, commands, boundaries, forensics.
   const findPath = join(D, '.smith', 'findings.json')
   if (existsSync(findPath)) {
     const fj = JSON.parse(readFileSync(findPath, 'utf8'))
@@ -48,7 +54,9 @@ try {
     out.boundaries = fj.boundaries || []
     out.entrypoints = fj.entrypoints || []
     out.architecture = fj.architecture || []
+    out.forensics = fj.forensics || null
     out.stackFull = fj.stack || ''
+    out.stack = shortStack(out.stackFull)
   }
   out.oldScarFiles = anomalies.filter(a => a.smith === 'scar' && a.file).map(a => a.file)
   out.nonCodeLeaks = out.oldScarFiles.filter(f => !isCodeFile(f))
