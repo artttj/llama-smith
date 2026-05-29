@@ -1,3 +1,8 @@
 node_modules/
 .smith/
 *.log
+
+# generated dashboard output
+reports/
+assets/hero-src.png
+.playwright-mcp/

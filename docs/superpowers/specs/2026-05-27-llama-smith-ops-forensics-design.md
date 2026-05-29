@@ -44,7 +44,7 @@ Shipping a less-built version of skilgen or repowise gets ignored. The opening: 
 - No MCP server, no semantic search, no knowledge graph. Static `.claude/skills/` files are the deliverable; competing on MCP is a different product.
 - No dashboard, no vibe score, no gotcha feed, no "what I'd know in 60 seconds" exposure theater.
 - Memory Matrix (session lessons) stays *compatible* — if `.smith/lessons.json` exists it folds into skills — but is not featured.
-- Reality Check, Oracle Loop, Smith Swarm, Agent Duel, Skill Drop, the `diff` verb: out of scope (roadmap).
+- Reality Check, Oracle Loop, Agent Duel (multi-model consensus), Skill Drop, the `diff` verb: out of scope (roadmap).
 
 ## Architecture
 
@@ -131,17 +131,29 @@ Forge rules (unchanged where they work, hardened where they failed):
 3. **Dedup findings** by `(file, kind)` before forge and print.
 4. **Code-only hotspots** via `isCodeFile()` (also a scan concern, listed above).
 
-## CLI surface — one command
+## CLI surface — no verb
+
+The name is the metaphor; the metaphor is the whole product. `llama-smith`
+already says Smith — a verb like `swarm` would say it twice. So there is no verb.
+Point it at a repo.
 
 ```bash
-llama-smith <repo>              # scan (print findings = proof) → forge skills (default)
+llama-smith <repo>              # scan (print findings = proof) → forge the skill
 llama-smith <repo> --scan-only  # findings only, write nothing
 llama-smith <repo> --json       # findings as JSON (tests / piping)
 llama-smith <repo> --local      # strip :cloud, use local Ollama
 llama-smith <repo> --only <skill>
 ```
 
-`cli-brain`, `cli-forge`, `cli-dashboard`, `cli-lessons` collapse into this single entry. Terminal output: a calm, scannable report (the proof), then `forged N skills → .claude/skills/`. Light llama flavor in the header only — not load-bearing.
+`cli-brain`, `cli-forge`, `cli-dashboard`, `cli-lessons` collapse into this single entry. Terminal output: a calm, scannable report (the proof), then `forged → .claude/skills/`. Light Matrix flavor in the header only — not load-bearing.
+
+**Naming, settled — one metaphor only.** `llama-smith` is Agent Smith for your repo, and the name carries it; nothing else wears a costume. The whole vocabulary is three words:
+
+- **Smiths** — the parallel scanners that read the repo.
+- **Glitches** — the operational tells that the system is broken: the deploy that races its own gate, the CI check that does not gate, the cron screaming into `/dev/null`. A Glitch is ops risk, never trivia. This is the wedge.
+- **Skills** — the cited Claude Code output. A claim with no source file is written `unknown`, never invented.
+
+Rejected: `swarm`/`construct`/`council`/`conclave`/`field-guide` as verbs (the name already does the work), and `Oracle`/`Reality Check`/`Memory Matrix`/`Scar Atlas`/`Foundry` as branding (each names a feature v1 does not ship). `scan` and `forge` stay internal stage names. The product fits on two lines: **Repo in. Skill out. Many Smiths enter, one skill comes out.**
 
 ## The cut list
 
@@ -161,7 +173,7 @@ Delete: `cli-dashboard.mjs`, `lib/dashboard.mjs` (The Construct), `lib/vibe.mjs`
 1. **Findings contract + code-only churn.** Define `findings.json`; move deterministic collectors into `lib`; add `isCodeFile`; fix hotspot targeting. Tests: exact numbers, no docs in hotspots.
 2. **Ops scan.** One analytical ops smith (deploy + CI-trust + jobs + secret-by-reference) → `operations` findings, deduped, fast models. Tests on the three repos.
 3. **Forge wiring + hardening.** Feed findings into `buildDraftPrompt`; rewrite `parseDraft`; truncation guard; skip-don't-stub. Forge `<project>-ops`, `-overview`, `-commands`. Tests: planted finding lands, think-dump rejected, truncation rejected, citations valid.
-4. **CLI collapse + cut list.** One `llama-smith` entry; delete dashboard/vibe/gotcha/consensus; update README.
+4. **CLI collapse + cut list.** One `llama-smith <repo>` entry, no verb; delete dashboard/vibe/gotcha/consensus; update README.
 5. **Harness as suite.** Wire the recorded fixtures into `node --test`.
 
 ## Risks and open questions
@@ -169,3 +181,47 @@ Delete: `cli-dashboard.mjs`, `lib/dashboard.mjs` (The Construct), `lib/vibe.mjs`
 - **Crowded field.** sentinel/repowise/skilgen are ahead on build-out. The bet is that a narrow, verifiable, ops-focused forge with visibly better judgment beats a broad me-too. If the ops read is not consistently sharper than the crowd's generic "pitfalls," the wedge is weak.
 - **Ops read depth.** The deploy-race catch was excellent; it must be reproducible across stacks (npm, PyPI, Docker, k8s), not a one-off. Worth probing more repos.
 - **Static skills vs MCP trend.** The market is trending to MCP servers and live queries. Static `.claude/skills/` is correct for Claude Code today but may date; noted, not addressed in v1.
+
+---
+
+## Agreed evolution (2026-05-29)
+
+Decisions made after validating the tool live on 10 real repos (5 famous, 5 random low-star). The throwaway harness (`scripts/probe.mjs`, `scripts/report.mjs`, `scripts/forge-skill.mjs`, `scripts/serve.mjs`) proved each of these and stays as a regression/demo asset.
+
+### 1. Swarm + Oracle (multi-model, picked from observed latency/quality)
+
+The scan is a swarm of cheap, fast investigators; a single strong model validates. Picks are grounded in real runs this session:
+
+| Role | Models | Why |
+|---|---|---|
+| **Investigators** (cast the net) | `glm-5.1:cloud` (deploy, ~5–13s, sharp), `deepseek-v4-flash:cloud` (~18–38s), `qwen3.5:cloud` (thorough) | Fast + diverse; each lane a different job. |
+| **Oracle** (the single judge) | `kimi-k2.6:cloud` (1T) | Re-reads every finding against its cited file and kills anything unsupported. High recall from the swarm, high precision from the Oracle. |
+
+This realises the roadmap's "Reality Check / Oracle" as a v1.x stage. Drop a finding the Oracle can't tie to its file.
+
+### 2. Comprehensive, self-learning forge — `<project>-smith`
+
+The forge is **deterministic rendering of cited findings**, not a second LLM guess (the model produced the findings; the forge only structures them, so nothing is hallucinated at forge time). Reference implementation: `scripts/forge-skill.mjs` → `buildSkill()`. It emits an Anthropic skill-creator-format `SKILL.md` (60–95 lines on real repos): trigger-rich frontmatter `description`, *When to use*, *What you most need to know*, sectioned cited findings (deploy / CI / cron / secret), fragility map (code-only hotspots), churn-discipline note, honest `unknown` for un-extracted commands, operating rules, and a self-learning *Lessons* section. Skill name is **`<project>-smith`** (project-scoped so each repo's skill is distinct; Matrix flavour). The old `<project>-devops` template forge is replaced.
+
+### 3. Self-learning loop
+
+Pattern adopted from the established append-log + confidence-graduation design (verified against the OSS ecosystem; star counts in that research were unverifiable — the *pattern* is what we copy, not any one repo):
+
+```
+.smith/lessons.jsonl   append-only: every correction / mined observation, raw
+        │  dedup + Bayesian confidence update on read
+        ▼
+.smith/instincts.yaml  deduped, confidence-ranked, project-scoped
+        │  only confidence > 0.7 graduates
+        ▼
+<project>-smith/SKILL.md   regenerated = findings + graduated lessons
+```
+
+- Explicit **corrections** enter HIGH ("correct once, never again"); **mined observations** enter LOW and graduate at >0.7.
+- **Project-scoped** — one repo's lessons never bleed into another's.
+- Contradicted lessons decay and drop, so the skill can't rot; atomic one-lesson-per-entry caps bloat; everything in git for rollback.
+- Builds on the existing `lib/lessons.mjs` / `lessonsFor` wiring. A post-session hook feeds `lessons.jsonl`.
+
+### 4. Editorial voice
+
+Forge prose follows the sonto-news DETOX rules: name the fact first, no hedging, no setup, ban filler words / X-not-Y / em-dash overuse / tricolon abuse. The dashboard's "Glitch Feed" hooks demonstrate the target voice.

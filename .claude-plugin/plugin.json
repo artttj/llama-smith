@@ -1,0 +1,10 @@
+{
+  "name": "llama-smith",
+  "description": "Repo forensics in, a self-learning Claude Code skill out. A swarm of local Ollama \"Smiths\" reads how a repo actually deploys, leaks, and breaks; an Oracle validates every finding against its cited file; and a comprehensive <repo>-matrix skill is forged so a fresh Claude acts like it has operated the repo for a year.",
+  "version": "0.2.0",
+  "author": { "name": "Artem Iagovdik", "email": "artem.iagovdik@y1.de", "url": "https://github.com/artttj" },
+  "homepage": "https://github.com/artttj/llama-smith",
+  "repository": "https://github.com/artttj/llama-smith",
+  "keywords": ["forensics", "skills", "ollama", "devops", "ops", "matrix", "agent"],
+  "commands": "./commands"
+}
