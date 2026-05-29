@@ -85,6 +85,20 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 const brandbar = () => `<a class="brandbar" href="index.html"><span class="bl">${LLAMA}</span><span class="bt">llama<b>·</b>smith</span></a>`
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
+// Opinionated one-liner, grounded: the validated architecture overview is the
+// factual spine; the verdict is the opinion the findings earn. Never invented.
+function repoBlurb(r) {
+  const overview = (r.architecture || []).find(a => a.area === 'overview')
+  const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
+  const spine = overview ? overview.claim.replace(/\s*\.\s*$/, '') : `${repoStack(r)} · ${(r.commits || 0).toLocaleString()} commits deep`
+  let verdict
+  if (statusOf(r) === 'failed') verdict = 'the construct could not read it'
+  else if (h) verdict = `carrying ${h} high-severity ${h > 1 ? 'traps' : 'trap'} the Smiths dragged into the light`
+  else if (m + l) verdict = `mostly clean — ${m + l} minor note${m + l > 1 ? 's' : ''}, nothing critical`
+  else verdict = 'pipeline came back clean, nothing to hide'
+  return `${spine} — ${verdict}.`
+}
+
 function glitchFeed() {
   const all = data.flatMap(r => (r.opsFindings || []).map(f => ({ f, r })))
     .sort((a, b) => (SEVRANK[a.f.severity] ?? 1) - (SEVRANK[b.f.severity] ?? 1))
@@ -100,12 +114,12 @@ function glitchFeed() {
 }
 
 const TYPES = [
-  { ic: 'rocket', stamp: 'DEPLOY-SMITH', name: 'Deploy paths', desc: 'Rollback traps, no staging gate, hardcoded hosts, releases that publish on any tag.' },
-  { ic: 'key', stamp: 'SECRET-SMITH', name: 'Secret leaks', desc: 'Tokens echoed to logs or committed in the clear. Named by location, never by value.' },
-  { ic: 'cron', stamp: 'CRON-SMITH', name: 'Cron ghosts', desc: 'Scheduled jobs that fail into /dev/null, overlap, or never alert anyone.' },
-  { ic: 'bug', stamp: 'FRAGILITY', name: 'Fragile hotspots', desc: 'Code that churns hard with one author and no tests. Where the bugs live.' },
-  { ic: 'branch', stamp: 'CHURN-MAP', name: 'Drift & churn', desc: 'Real code churn only. Never the changelog, the lockfile, or generated files.' },
-  { ic: 'eye', stamp: 'ORACLE', name: 'Two oracles', desc: 'The Validation Oracle re-reads each finding against its file — hallucinations die here. The Self-Improvement Oracle keeps the skill\'s memory.' },
+  { ic: 'eye', stamp: 'ARCHITECT-SMITH', name: 'Project architecture', desc: 'What the app is, its modules, data flow, data model, and entrypoints — the matrix of the codebase. Every claim validated against a real file.' },
+  { ic: 'package', stamp: 'STACK-MAP', name: 'Stack & commands', desc: 'The real stack, entrypoints, and the build/test/deploy commands an agent should run — parsed from manifests and CI, never invented.' },
+  { ic: 'shield', stamp: 'BOUNDARIES', name: 'Do-not-touch', desc: 'Lockfiles, generated output, and env files an agent must not hand-edit — with the reason it must not.' },
+  { ic: 'rocket', stamp: 'OPS-SMITHS', name: 'Operational risk', desc: 'Deploy traps, secret leaks, and cron ghosts. The ops layer hanging off the architecture, not the headline.' },
+  { ic: 'bug', stamp: 'FRAGILITY', name: 'Fragile hotspots', desc: 'Code that churns hard over the last year. Where bugs live. Docs and lockfiles excluded.' },
+  { ic: 'eye', stamp: 'ORACLE', name: 'Two oracles', desc: 'The Validation Oracle re-reads each claim against its file — hallucinations die here. The Self-Improvement Oracle keeps the skill\'s memory.' },
 ]
 
 function card(r) {
@@ -121,6 +135,7 @@ function card(r) {
   return `<a class="card ${st === 'failed' ? 'glitchfail' : ''}" href="${esc(r.repo)}.html">
     <div class="head"><span class="cn"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</span></div>
     <div class="meta"><span class="pill stack">${esc(repoStack(r))}</span><span class="pill status ${st}">${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</span>${meta}</div>
+    <p class="blurb">${esc(repoBlurb(r))}</p>
     ${sev}
     ${top ? `<div class="reveal-line">validated against ${esc(top.file)}</div>` : ''}
     <span class="go">open report ${I.arrow}</span></a>`
@@ -133,7 +148,7 @@ function indexPage() {
     high: all.filter(f => f.severity === 'high').length,
     forged: data.filter(r => (r.skills || []).length || r.skillForged).length,
     commits: data.reduce((n, r) => n + (r.commits || 0), 0),
-    leaks: data.reduce((n, r) => n + (r.nonCodeLeaks || []).length, 0),
+    arch: data.reduce((n, r) => n + (r.architecture || []).length, 0),
   }
   const famous = data.filter(r => r.group !== 'wild' && r.group !== 'boring')
   const wild = data.filter(r => r.group === 'wild' || r.group === 'boring')
@@ -146,23 +161,23 @@ function indexPage() {
       ${heroArt}
       <div class="hero-copy">
         <h1 class="slogan">Many Smiths enter.<br>One skill comes out.</h1>
-        <p class="lede">Point llama-smith at any repo. A swarm of Ollama models reads how it deploys, breaks, leaks, and drifts, then forges a project skill <span class="hot">from what it can prove</span>.</p>
-        <div class="taglines"><span>Reads your ops, not your vibes</span><span>Every claim cites a file</span><span>Hallucinations die at the citation step</span><span>Runs on your Ollama, local or cloud</span></div>
+        <p class="lede">Point llama-smith at any repo. A swarm of Ollama models maps how it's built — <span class="hot">architecture, modules, data flow</span> — and where it deploys, leaks, and breaks, then forges a project skill validated by the Oracle.</p>
+        <div class="taglines"><span>Maps the matrix of a codebase</span><span>Every claim cites a file</span><span>Hallucinations die at the citation step</span><span>Runs on your Ollama, local or cloud</span></div>
       </div>
     </div>
   </header>
   <section class="stats">
-    <div class="stat">${I.repo}<div class="n">${S.repos}</div><div class="l">repos scanned</div></div>
+    <div class="stat">${I.repo}<div class="n">${S.repos}</div><div class="l">repos mapped</div></div>
+    <div class="stat hi">${I.eye}<div class="n">${S.arch}</div><div class="l">architecture facts</div></div>
     <div class="stat">${I.scan}<div class="n">${S.findings}</div><div class="l">operational findings</div></div>
-    <div class="stat hi">${I.high}<div class="n">${S.high}</div><div class="l">critical</div></div>
+    <div class="stat">${I.high}<div class="n">${S.high}</div><div class="l">critical risks</div></div>
     <div class="stat">${I.file}<div class="n">${S.forged}</div><div class="l">skills forged</div></div>
     <div class="stat">${I.branch}<div class="n">${S.commits.toLocaleString()}</div><div class="l">commits read</div></div>
-    <div class="stat">${I.shield}<div class="n">${S.leaks}</div><div class="l">false hotspots killed</div></div>
   </section>
   <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>The most-used repos on earth</h2><p class="sub">Click a repo for its full forensic report, churn map, and forged skill.</p></div>
   <div class="grid">${famous.map(card).join('')}</div>
   ${wild.length ? `<div class="sec"><span class="chip">${I.eye} In the wild</span><h2>Random low-star repos</h2><p class="sub">Does it stay honest when there's little to find?</p></div><div class="grid">${wild.map(card).join('')}</div>` : ''}
-  <div class="sec"><span class="chip">${I.scan} What the Smiths hunt</span><h2>Six kinds of trouble</h2><p class="sub">Deploy paths, secret leaks, cron ghosts, rollback traps.</p></div>
+  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
   <div class="types">${TYPES.map(t => `<div class="type"><div class="th">${I[t.ic]}<h3>${esc(t.name)}</h3></div>${stamp(t.stamp)}<p>${esc(t.desc)}</p></div>`).join('')}</div>
   <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>The scariest findings, ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
   <div class="glitches">${glitchFeed()}</div>
@@ -177,13 +192,16 @@ function skillPanel(r) {
   }
   const built = buildSkillFiles(
     { repo: r.repo, fullName: repoFull(r), opsFindings: ops, newCodeHotspots: hot },
-    { name: `${r.repo}-smith`, stack: repoStack(r), lessons: adaptLessons(r.lessons || []), scannedAt: 'this run' }
+    {
+      name: `${r.repo}-smith`, stack: r.stackFull || repoStack(r), lessons: adaptLessons(r.lessons || []), scannedAt: 'this run',
+      commands: r.commands || [], boundaries: r.boundaries || [], entrypoints: r.entrypoints || [], architecture: r.architecture || [],
+    }
   )
   const lines = f => (f.body.match(/\n/g) || []).length + 1
   const tree = built.files.map((f, i) => `<li data-fi="${i}"><span class="tf">${esc(f.path)}</span><span class="tl">${lines(f)}L</span></li>`).join('')
   const files = built.files.map((f, i) => `<details class="sf"${i === 0 ? ' open' : ''}><summary>${I.file}<span class="sfp">${esc(f.path)}</span><span class="sfl">${lines(f)} lines</span></summary><pre>${esc(f.body)}</pre></details>`).join('')
   return `<div class="skillfolder">
-    <p class="explain">A Claude Code skill is a <b>folder</b>, not a file. <code>${esc(built.name)}/SKILL.md</code> is what Claude reads first; the <code>references/</code> files are per-Smith deep reads it loads on demand; <code>memory.md</code> is the Self-Improvement Oracle's long-term memory, rewritten from your corrections. Every claim cites a file or says <b>unknown</b>.</p>
+    <p class="explain">A Claude Code skill is a <b>folder</b>, not a file. <code>${esc(built.name)}/SKILL.md</code> is what Claude reads first, and it points straight at <code>references/architecture.md</code> — the project's map: what it is, its modules, data flow, and entrypoints. The other <code>references/</code> files cover real commands, do-not-touch boundaries, and operational risk; <code>memory.md</code> is the Self-Improvement Oracle's long-term memory. Every claim cites a file or says <b>unknown</b>.</p>
     <div class="tree"><div class="treehd">${I.repo}<b>${esc(built.name)}/</b>${stamp(built.files.length + ' FILES · FORGED')}</div><ul>${tree}</ul></div>
     ${files}</div>`
 }
@@ -203,6 +221,7 @@ function repoPage(r) {
   <header class="repo">
     <a class="back" href="index.html">${I.arrow} all scanned sites</a>
     <div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div>
+    <p class="repoblurb">${esc(repoBlurb(r))}</p>
     <div class="metastrip">
       ${msec('branch', 'lang', repoStack(r))}
       <span class="m">${st === 'failed' ? I.high : st === 'clean' ? I.shield : I.scan}status <b>${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</b></span>

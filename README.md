@@ -36,6 +36,8 @@ Then point it at a repo:
 
 You need Node 20+ and Ollama running. Cloud models by default; add `--local` to keep everything on your machine.
 
+In cloud mode the swarm sends file contents to your cloud Ollama, including config and `.env` files the secret Smith reads. Run it only on repos you own or are authorized to scan, and use `--local` when the contents must not leave your machine.
+
 Or skip the plugin and run it directly:
 
 ```bash

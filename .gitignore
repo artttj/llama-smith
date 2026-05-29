@@ -6,3 +6,7 @@ node_modules/
 reports/
 assets/hero-src.png
 .playwright-mcp/
+
+# local verification screenshots
+*.jpeg
+*.jpg

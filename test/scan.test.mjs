@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseSmithFindings, mergeFindings } from '../lib/scan.mjs'
+import { parseSmithFindings, mergeFindings, parseArchitecture } from '../lib/scan.mjs'
 import { dedupeFindings } from '../lib/pipeline.mjs'
 
 test('parseSmithFindings extracts anomalies, defaults severity, tags the smith', () => {
@@ -47,4 +47,19 @@ test('dedupeFindings keeps genuinely distinct findings on the same file', () => 
   const a = { smith: 'deploy', severity: 'high', file: 'r.yml', text: 'hardcoded IP address in the SSH deploy step' }
   const b = { smith: 'deploy', severity: 'low', file: 'r.yml', text: 'release triggers on any tag without semver filtering' }
   assert.equal(dedupeFindings([a, b]).length, 2)
+})
+
+test('parseArchitecture extracts cited map items and normalizes the area', () => {
+  const raw = '{"map":[{"area":"modules","claim":"auth/ handles OAuth token lifecycle","file":"src/auth/index.ts"},{"area":"bogus","claim":"it is an HTTP API"}]}'
+  const out = parseArchitecture(raw)
+  assert.equal(out.length, 2)
+  assert.equal(out[0].area, 'modules')
+  assert.equal(out[0].file, 'src/auth/index.ts')
+  assert.equal(out[1].area, 'overview', 'unknown area falls back to overview')
+  assert.equal(out[1].file, null)
+})
+
+test('parseArchitecture returns [] on garbage and drops itemless claims', () => {
+  assert.deepEqual(parseArchitecture('no json'), [])
+  assert.deepEqual(parseArchitecture('{"map":[{"area":"overview"}]}'), [])
 })

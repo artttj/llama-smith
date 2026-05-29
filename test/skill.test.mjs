@@ -49,6 +49,66 @@ test('adaptLessons maps store shape and grades confidence', () => {
   assert.equal(out[0].learnedAt, '2026-05-01')
 })
 
+test('commands.md renders real parsed commands, cited, no unknown stub', () => {
+  const built = buildSkillFiles(repo, { name: 'demo-smith', commands: [{ cmd: 'npm run build', raw: 'vite build', file: 'package.json' }] })
+  const cmd = built.files.find(f => f.path === 'references/commands.md').body
+  assert.match(cmd, /npm run build/)
+  assert.match(cmd, /package\.json/)
+  assert.ok(!/unknown/i.test(cmd), 'no unknown stub when commands exist')
+})
+
+test('commands.md falls back to unknown when nothing parsed', () => {
+  const cmd = buildSkillFiles(repo, {}).files.find(f => f.path === 'references/commands.md').body
+  assert.match(cmd, /unknown/i)
+})
+
+test('commands.md groups commands by intent (build/test/deploy)', () => {
+  const built = buildSkillFiles(repo, {
+    commands: [
+      { cmd: 'npm run build', file: 'package.json', kind: 'build' },
+      { cmd: 'npm test', file: 'package.json', kind: 'test' },
+      { cmd: 'npm publish', file: '.github/workflows/release.yml', kind: 'deploy' },
+    ],
+  })
+  const cmd = built.files.find(f => f.path === 'references/commands.md').body
+  assert.match(cmd, /## Build[\s\S]*npm run build/)
+  assert.match(cmd, /## Test[\s\S]*npm test/)
+  assert.match(cmd, /## Deploy & release[\s\S]*npm publish/)
+  assert.match(cmd, /release\.yml/, 'cites the CI workflow it came from')
+})
+
+test('SKILL.md lists entrypoints when detected', () => {
+  const skill = buildSkillFiles(repo, { entrypoints: [{ what: 'CLI', value: 'cli.mjs', file: 'package.json' }] })
+    .files.find(f => f.path === 'SKILL.md').body
+  assert.match(skill, /Entrypoints:.*`cli\.mjs`/)
+})
+
+test('architecture.md renders the cited app map, grouped by area, linked from SKILL.md', () => {
+  const arch = [
+    { area: 'overview', claim: 'A real-time HTTP API for uptime checks', file: 'server/server.js' },
+    { area: 'modules', claim: 'server/ holds the monitor scheduler', file: 'server/uptime-kuma-server.js' },
+  ]
+  const built = buildSkillFiles(repo, { name: 'demo-smith', architecture: arch })
+  const a = built.files.find(f => f.path === 'references/architecture.md')
+  assert.ok(a, 'architecture.md present when the map is non-empty')
+  assert.match(a.body, /## What it is[\s\S]*real-time HTTP API/)
+  assert.match(a.body, /## Modules & responsibilities[\s\S]*monitor scheduler/)
+  assert.match(a.body, /server\/server\.js/, 'claims cite their file')
+  const skill = built.files.find(f => f.path === 'SKILL.md').body
+  assert.match(skill, /references\/architecture\.md/, 'SKILL.md points at the architecture map')
+  assert.match(skill, /first/i, 'architecture is framed as the first read')
+  assert.ok(!buildSkillFiles(repo, {}).files.some(f => f.path === 'references/architecture.md'), 'omitted when no map')
+})
+
+test('boundaries.md renders do-not-touch paths with reasons, omitted when empty', () => {
+  const withB = buildSkillFiles(repo, { boundaries: [{ path: 'package-lock.json', rule: 'never hand-edit' }] })
+  const b = withB.files.find(f => f.path === 'references/boundaries.md')
+  assert.ok(b, 'boundaries.md present when boundaries exist')
+  assert.match(b.body, /package-lock\.json.*never hand-edit/)
+  assert.ok(withB.files.find(f => f.path === 'SKILL.md').body.includes('references/boundaries.md'), 'linked from SKILL.md')
+  assert.ok(!buildSkillFiles(repo, {}).files.some(f => f.path === 'references/boundaries.md'), 'no boundaries file when none detected')
+})
+
 test('only graduated (>=0.7) memory renders in memory.md', () => {
   const lessons = [{ pattern: 'use pnpm', confidence: 0.9 }, { pattern: 'maybe flaky', confidence: 0.4 }]
   const body = buildSkillFiles(repo, { lessons }).files.find(f => f.path === 'memory.md').body

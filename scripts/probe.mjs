@@ -39,6 +39,17 @@ try {
   const anomPath = join(D, '.smith', 'anomalies.json')
   const anomalies = existsSync(anomPath) ? JSON.parse(readFileSync(anomPath, 'utf8')) : []
   out.opsFindings = anomalies.filter(a => a.smith !== 'scar')
+
+  // Deterministic deep-skill facts (commands/boundaries/entrypoints/stack) from the forge output.
+  const findPath = join(D, '.smith', 'findings.json')
+  if (existsSync(findPath)) {
+    const fj = JSON.parse(readFileSync(findPath, 'utf8'))
+    out.commands = fj.commands || []
+    out.boundaries = fj.boundaries || []
+    out.entrypoints = fj.entrypoints || []
+    out.architecture = fj.architecture || []
+    out.stackFull = fj.stack || ''
+  }
   out.oldScarFiles = anomalies.filter(a => a.smith === 'scar' && a.file).map(a => a.file)
   out.nonCodeLeaks = out.oldScarFiles.filter(f => !isCodeFile(f))
 
