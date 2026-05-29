@@ -31,9 +31,6 @@ const repoStars = r => r.stars ?? null
 const readAsset = f => { const p = join(LS, 'assets', f); return existsSync(p) ? readFileSync(p, 'utf8').replace(/\n+$/, '') : '' }
 const HERO_SRC = join(LS, 'assets', 'hero.webp')
 const HAS_HERO = existsSync(HERO_SRC)
-const LOGO_SRC = join(LS, 'assets', 'logo.webp')
-const HAS_LOGO = existsSync(LOGO_SRC)
-const LLAMA = readAsset('illustrations/llama.svg')
 
 // Lucide line icons, inlined (offline, themeable via currentColor).
 const SVG = i => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${i}</svg>`
@@ -88,8 +85,7 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <body><canvas id="rain"></canvas><div class="wrap">${body}</div>
 <script>${RAIN}${js}</script></body></html>`
 
-const brandmark = HAS_LOGO ? '<img class="bl" src="logo.webp" width="40" height="40" alt="llama-smith logo">' : `<span class="bl">${LLAMA}</span>`
-const brandbar = () => `<a class="brandbar" href="index.html">${brandmark}<span class="bt">llama<b>·</b>smith</span></a>`
+const brandbar = () => `<a class="brandbar" href="index.html"><span class="bt">llama<b>·</b>smith</span></a>`
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
 // Opinionated one-liner, grounded: the validated architecture overview is the
@@ -353,7 +349,6 @@ function repoPage(r) {
 
 mkdirSync(outDir, { recursive: true })
 if (HAS_HERO) copyFileSync(HERO_SRC, join(outDir, 'hero.webp'))
-if (HAS_LOGO) copyFileSync(LOGO_SRC, join(outDir, 'logo.webp'))
 writeFileSync(join(outDir, 'index.html'), indexPage())
 for (const r of data) writeFileSync(join(outDir, `${r.repo}.html`), repoPage(r))
 process.stdout.write('wrote ' + (data.length + 1) + ' pages\n')
