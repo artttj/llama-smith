@@ -58,13 +58,13 @@ test('escapes HTML in the repo identity (org/name)', () => {
   rmSync(b.tmp, { recursive: true, force: true })
 })
 
-test('renders corpus charts (chart() receives an object body, not a string)', () => {
+test('forensic charts render on the detail page (chart() receives an object body, not a string)', () => {
   const data = [baseRepo({
     opsFindings: [{ smith: 'secret', severity: 'high', text: 'leak', file: 'a.js' }],
     architecture: [{ area: 'modules', claim: 'm', file: 'm.js' }],
   })]
   const b = build(data)
-  assert.ok(b.index.includes('class="barchart"'), 'corpus charts render instead of silently collapsing to empty')
+  assert.ok(b.page('evil').includes('Findings by Severity'), 'forensic chart card renders on the detail page')
   rmSync(b.tmp, { recursive: true, force: true })
 })
 
