@@ -1158,13 +1158,11 @@ body::after {
 /* Proof / value block — bento: one tall claim card + two stacked support cards */
 .proof-grid {
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   align-items: stretch;
   margin-top: 1.5rem;
 }
-
-.proof-lg { grid-row: span 2; }
 
 .proof-card { display: flex; flex-direction: column; padding: 1.4rem; }
 

@@ -372,7 +372,7 @@ function proofBlock() {
       <p class="body" style="margin-top:0.75rem;max-width:58ch">Most tools summarize your code and stop. Llama Smith reads how the project actually deploys and where it leaks, cites every claim to a file, then scores the risk.</p>
     </div>
     <div class="proof-grid">
-      <div class="panel proof-card proof-lg">
+      <div class="panel proof-card">
         <div class="proof-head"><span class="proof-ico">${I.eye}</span>Cited and validated</div>
         <p class="proof-text">Every finding points at a real file. The Oracle re-reads each claim against that file and drops anything it cannot back up. No file, no finding.</p>
         ${finding}
@@ -381,6 +381,15 @@ function proofBlock() {
         <div class="proof-head"><span class="proof-ico">${I.shield}</span>Quality score</div>
         <div class="grade-scale">${scale}</div>
         <p class="proof-text">Each repo gets an A to F grade from its validated findings and how concentrated the code ownership is, measured by bus factor and single-owner files.</p>
+      </div>
+      <div class="panel proof-card">
+        <div class="proof-head"><span class="proof-ico">${I.zap}</span>Self-learning memory</div>
+        <div class="forensic-tags">
+          <span class="forensic-tag">/llama-smith-lesson</span>
+          <span class="forensic-tag">memory.md</span>
+          <span class="forensic-tag">per repo</span>
+        </div>
+        <p class="proof-text">Correct the skill once and the lesson folds into its memory.md on the next run, at high confidence. Lessons stay per repo, so one project's fixes never leak into another.</p>
       </div>
       <div class="panel proof-card">
         <div class="proof-head"><span class="proof-ico">${I.bus}</span>Git forensics</div>
