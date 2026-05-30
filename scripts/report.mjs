@@ -74,6 +74,20 @@ const DELETE_JS = `document.querySelectorAll('.delete-report').forEach(function(
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
+<meta name="description" content="A model swarm turns a real repo into an operational Claude Code skill. The Oracle verifies every claim against its cited file.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Llama Smith">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="A model swarm turns a real repo into an operational Claude Code skill. The Oracle verifies every claim against its cited file.">
+<meta property="og:image" content="https://artttj.de/llama-smith/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://artttj.de/llama-smith/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(title)}">
+<meta name="twitter:description" content="A model swarm turns a real repo into an operational Claude Code skill.">
+<meta name="twitter:image" content="https://artttj.de/llama-smith/og.png">
 <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=jetbrains-mono:400,500,600,700,800|ibm-plex-mono:400,500">
 <style>${CSS}</style></head>
@@ -158,6 +172,16 @@ function repoBlurb(r, full = false) {
   const tx = top ? top.text.replace(/\s*\.?\s*$/, '') : ''
   const topTxt = tx ? ` Top risk: ${full || tx.length <= 150 ? tx : tx.slice(0, 150).replace(/\s+\S*$/, '') + '…'}.` : ''
   return `${spine}. ${counts} finding${(h + m + l) > 1 ? 's' : ''}.${topTxt}`
+}
+
+// Tile description: what the repo is. No findings or risk text — issues live on
+// the detail page. The severity bar still shows the counts visually on the tile.
+function repoCardDesc(r) {
+  const arch = r.architecture || []
+  const overview = (arch.find(a => a.area === 'overview') || {}).claim
+  const manifest = String(r.blurb || '').trim()
+  const desc = manifest.length >= 40 ? manifest : (overview || manifest || `${repoStack(r)} project`)
+  return String(desc).replace(/\s*\.\s*$/, '') + '.'
 }
 
 const ownerOf = full => (full.includes('/') ? full.split('/')[0] : '')
@@ -311,8 +335,8 @@ function card(r) {
         </div>
         <span class="badge badge-grade ${gradeClass}">${grade.score} ${grade.grade}</span>
       </div>
-      <div style="font-size:0.9rem;color:var(--text-secondary);line-height:1.55;margin:0.75rem 0">
-        ${esc(repoBlurb(r))}
+      <div class="card-desc">
+        ${esc(repoCardDesc(r))}
       </div>
       ${sev}
       <div style="display:flex;align-items:center;gap:0.5rem;margin-top:auto;padding-top:1rem;font-size:0.8rem;color:var(--green-brand)">
@@ -322,12 +346,58 @@ function card(r) {
   </div>`
 }
 
+// Value block on the landing page: why the output is trustworthy, not just how
+// the pipeline runs. Reuses real dashboard components so it previews the product.
+function proofBlock() {
+  const finding = `<div class="evidence evidence-high" style="margin-top:1rem">
+    <span class="evidence-rail"></span>
+    <div class="evidence-body">
+      <div class="evidence-header">
+        <span class="badge badge-high">High</span>
+        <span class="meta">deploy</span>
+        <span class="path-chip">.github/workflows/release.yml</span>
+        <span class="proof-validated">${I.shield} Oracle validated</span>
+      </div>
+      <div class="evidence-text">Publishes on any tag with no approval gate and no rollback step.</div>
+    </div>
+  </div>`
+  const GRADES = [['A', 'healthy'], ['B', 'healthy'], ['C', 'watch'], ['D', 'critical'], ['F', 'critical']]
+  const scale = GRADES.map(([g, c]) => `<span class="grade-chip" style="color:${CONCERN[c]};border-color:${CONCERN[c]}">${g}</span>`).join('')
+  const tags = ['bus factor', 'single-owner files', 'churn hotspots', 'module ownership', 'change coupling']
+    .map(t => `<span class="forensic-tag">${esc(t)}</span>`).join('')
+  return `<section class="section">
+    <div class="section-header">
+      <span class="section-title">Forensic, not generative</span>
+      <h2 class="display" style="margin-top:0.5rem">It proves what it finds</h2>
+      <p class="body" style="margin-top:0.75rem;max-width:58ch">Most tools summarize your code and stop. Llama Smith reads how the project actually deploys and where it leaks, cites every claim to a file, then scores the risk.</p>
+    </div>
+    <div class="proof-grid">
+      <div class="panel proof-card proof-lg">
+        <div class="proof-head"><span class="proof-ico">${I.eye}</span>Cited and validated</div>
+        <p class="proof-text">Every finding points at a real file. The Oracle re-reads each claim against that file and drops anything it cannot back up. No file, no finding.</p>
+        ${finding}
+      </div>
+      <div class="panel proof-card">
+        <div class="proof-head"><span class="proof-ico">${I.shield}</span>Quality score</div>
+        <div class="grade-scale">${scale}</div>
+        <p class="proof-text">Each repo gets an A to F grade from its validated findings and how concentrated the code ownership is, measured by bus factor and single-owner files.</p>
+      </div>
+      <div class="panel proof-card">
+        <div class="proof-head"><span class="proof-ico">${I.bus}</span>Git forensics</div>
+        <div class="forensic-tags">${tags}</div>
+        <p class="proof-text">Bus factor, single-owner files, churn hotspots, ownership and coupling, read straight from git history. Never guessed.</p>
+      </div>
+    </div>
+  </section>`
+}
+
 function indexPage() {
   const famous = data.filter(r => r.group !== 'wild' && r.group !== 'boring')
   const wild = data.filter(r => r.group === 'wild' || r.group === 'boring')
 
   const body = `${brandbar()}
 ${heroSection()}
+${proofBlock()}
 <section class="section">
   <div class="section-header">
     <span class="section-title">Scanned Repositories</span>
@@ -343,7 +413,7 @@ ${heroSection()}
   <div class="grid">${wild.map(card).join('')}</div>` : ''}
 </section>
 ${siteFooter()}`
-  return shell('llama-smith · the construct', body, DELETE_JS)
+  return shell('Llama Smith · turns a real repo into a Claude Code skill', body, DELETE_JS)
 }
 
 function skillPanel(r) {
@@ -736,7 +806,7 @@ function repoPage(r) {
             ${r.url
               ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" class="repo-title-link" style="font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;font-family:var(--font-display)" title="View ${esc(full)} on GitHub">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}${EXT_ICON}</a>`
               : `<div style="font-size:1.5rem;font-weight:700;color:var(--text-primary);letter-spacing:-0.02em;font-family:var(--font-display)" title="Cloned locally — no public remote">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}</div>`}
-            <div class="score-ring" style="border-color:${gradeColor}" title="Risk grade ${grade.grade} — score ${grade.score}/100 from validated risk, ownership, and coverage" aria-label="Risk grade ${grade.grade}, score ${grade.score} of 100">
+            <div class="score-ring" style="border-color:${gradeColor}" title="Risk grade ${grade.grade} — score ${grade.score}/100 from validated findings and code ownership (bus factor, single-owner files)" aria-label="Risk grade ${grade.grade}, score ${grade.score} of 100">
               <span class="score-ring-num">${grade.score}</span>
               <span class="score-ring-grade" style="color:${gradeColor}">${grade.grade}</span>
             </div>
@@ -797,7 +867,7 @@ function repoPage(r) {
   </div>
 </section>
 ${siteFooter()}`
-  return shell(`llama-smith · ${full}`, body, COPY_JS + TECH_JS + DELETE_JS)
+  return shell(`Llama Smith · ${full}`, body, COPY_JS + TECH_JS + DELETE_JS)
 }
 
 export function buildDashboard(results, out = outDir) {

@@ -6,6 +6,8 @@
 ![tests](https://img.shields.io/badge/tests-node--test-3ddc84)
 ![runs on Ollama](https://img.shields.io/badge/runs%20on-Ollama-3ddc84)
 
+![Llama Smith — a local model swarm that turns a real repo into an operational Claude Code skill](assets/banner.webp)
+
 Point it at a repo. A swarm of Ollama models maps how the project is built — its architecture, modules, and data flow — and how it deploys, leaks, and breaks, then forges a Claude Code skill from what they can prove. The next agent that opens the repo acts like it has worked there for a year.
 
 The swarm runs on your own Ollama, never on Claude Code's model. Cloud models by default, or `--local` to run models you've pulled locally — no cloud account needed.
@@ -64,7 +66,7 @@ Each repo gets its own page, and the forged skill is the headline, not something
 
 ![a forged skill report](assets/screenshots/report.png)
 
-Under the skill is the evidence it was built from. A repo-health card leads with the A–F grade, then segmented bars break down findings by severity and single-owner versus shared code, and ranked bars cover churn hotspots, architecture coverage, module ownership, and top contributors. An Oracle verdict card closes the page with the citation coverage. The grade comes from validated findings, ownership concentration, and how much of the architecture the Smiths mapped. You can delete a report straight from the dashboard.
+Under the skill is the evidence it was built from. A repo-health card leads with the A–F grade, then segmented bars break down findings by severity and single-owner versus shared code, and ranked bars cover churn hotspots, architecture coverage, module ownership, and top contributors. An Oracle verdict card closes the page with the citation coverage. The grade comes from validated findings and how concentrated the code ownership is, measured by bus factor and single-owner files. You can delete a report straight from the dashboard.
 
 Color carries one meaning each: green healthy, red critical, amber watch, cyan neutral evidence. Each page inlines its own CSS and hero image, so a single `.html` file works anywhere.
 
