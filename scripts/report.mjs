@@ -145,7 +145,7 @@ const heroSection = () => {
 }
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
-function repoBlurb(r) {
+function repoBlurb(r, full = false) {
   const arch = r.architecture || []
   const pick = arch.find(a => a.area === 'overview') || arch.find(a => a.area === 'abstractions') || arch.find(a => a.area === 'modules') || arch.find(a => a.area === 'entrypoints')
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
@@ -155,7 +155,7 @@ function repoBlurb(r) {
   if (!counts) return `${spine}. Clean scan — no operational risk found.`
   const top = (r.opsFindings || []).find(f => f.severity === 'high') || (r.opsFindings || []).find(f => f.severity === 'medium')
   const tx = top ? top.text.replace(/\s*\.?\s*$/, '') : ''
-  const topTxt = tx ? ` Top risk: ${tx.length > 150 ? tx.slice(0, 150).replace(/\s+\S*$/, '') + '…' : tx}.` : ''
+  const topTxt = tx ? ` Top risk: ${full || tx.length <= 150 ? tx : tx.slice(0, 150).replace(/\s+\S*$/, '') + '…'}.` : ''
   return `${spine}. ${counts} finding${(h + m + l) > 1 ? 's' : ''}.${topTxt}`
 }
 
@@ -337,7 +337,6 @@ ${heroSection()}
   </div>
   <div class="grid">${wild.map(card).join('')}</div>` : ''}
 </section>
-${corpusCharts()}
 ${siteFooter()}`
   return shell('llama-smith · the construct', body)
 }
@@ -694,7 +693,7 @@ function repoPage(r) {
               <span class="score-ring-grade" style="color:${gradeColor}">${grade.grade}</span>
             </div>
           </div>
-          <p style="margin-top:0.375rem;font-size:0.9rem;color:var(--text-secondary);line-height:1.5">${esc(repoBlurb(r))}</p>
+          <p style="margin-top:0.375rem;font-size:0.9rem;color:var(--text-secondary);line-height:1.5">${esc(repoBlurb(r, true))}</p>
           ${allTech.length ? `<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.75rem;align-items:center">${techBadgesLimited}</div>` : ''}
         </div>
       </div>

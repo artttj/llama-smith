@@ -50,12 +50,13 @@ The `AGENTS.md` is the cross-tool version: a single thorough file so anyone on o
 
 ## 📊 Dashboard
 
-Browse scan results across repos as a self-contained HTML dashboard:
+Browse scan results as a self-contained HTML dashboard. In Claude Code:
 
-```bash
-node llama-smith.mjs serve                       # build + serve on localhost:7777
-node scripts/report.mjs results.json ./reports   # just write the HTML
 ```
+/llama-smith-dashboard
+```
+
+Without the plugin: `node llama-smith.mjs serve` builds and serves on localhost:7777.
 
 ![llama-smith dashboard](assets/screenshots/dashboard.png)
 
