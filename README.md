@@ -1,4 +1,4 @@
-# llama-smith
+# 🦙⚒️ llama-smith
 
 ![license MIT](https://img.shields.io/badge/license-MIT-3ddc84)
 ![node 20+](https://img.shields.io/badge/node-20%2B-3ddc84)
@@ -15,7 +15,7 @@ Many Smiths enter.
 One skill comes out.
 ```
 
-## What it actually does
+## 🔍 What it actually does
 
 Most "repo to AI context" tools summarize what the code *is* and stop there. llama-smith builds the project's map and grounds every line in a file: what the app is and how data moves through it, the deploy that SSHes into a hardcoded IP, the release that publishes on any tag with no gate, the files only one person understands. The stuff nobody writes down (yes, including this README).
 
@@ -26,7 +26,7 @@ Four things happen when you run it.
 3. **Deterministic extractors fill in the facts.** No model touches these: the stack and entrypoints from manifests, the real build/test/deploy commands from `package.json` and CI, the do-not-touch boundaries (lockfiles, generated dirs, `.env`), the churn hotspots, and the git forensics — bus factor and single-owner files.
 4. **The forge writes the skill.** A deterministic step turns the surviving, cited material into a `<repo>-smith/` folder. No model writes the skill, so the skill can't hallucinate.
 
-## What you get
+## 📦 What you get
 
 A skill folder, architecture-first:
 
@@ -46,7 +46,7 @@ A skill folder, architecture-first:
 
 The `AGENTS.md` is the cross-tool version: a single thorough file so anyone on opencode or Cursor gets the same architecture-first map, not just Claude Code.
 
-## Dashboard
+## 📊 Dashboard
 
 Generate a forensic HTML dashboard to browse scan results across repos:
 
@@ -63,7 +63,7 @@ The dashboard shows:
 
 Colors are semantic: green for validated/success, red for high severity, amber for warning, cyan for technical metadata. The design prioritizes scan results over atmosphere — content sits on clean dark panels with strong contrast and readable typography.
 
-## Install (Claude Code plugin)
+## 🔌 Install (Claude Code plugin)
 
 ```
 /plugin marketplace add artttj/llama-smith
@@ -91,7 +91,7 @@ node llama-smith.mjs ./repo --rounds 3     # more recall, more time
 
 It writes the skill into `<repo>/.claude/skills/<repo>-smith/` and the raw findings into `<repo>/.smith/findings.json`. Open Claude Code in that repo and the skill shows up on its own.
 
-## It learns
+## 🧠 It learns
 
 When the agent gets something wrong and you correct it, tell the skill:
 
@@ -101,17 +101,17 @@ node scripts/lesson.mjs ./repo "deploy from production, not main"
 
 The **Self-Improvement Oracle** takes that lesson in at high confidence and folds it into `memory.md` on the next run. Corrections are kept per repo, so one project's scar tissue never leaks into another's. Observations mined from past sessions enter low and only stick if they keep showing up.
 
-## Under the hood
+## 🛠️ Under the hood
 
 Zero dependencies. Node 20+ and `node --test`. A thin CLI over a few small modules: the swarm and architecture Smith (`lib/scan.mjs`), the Oracle (`lib/oracle.mjs`), the deterministic extractors (`lib/project.mjs`, `lib/commands.mjs`), the git forensics (`lib/forensics.mjs`, `lib/churn.mjs`), the forge (`lib/skill.mjs`), and the lessons store. Built on Ollama, dispatched the same way as [llama-review](https://github.com/artttj/llama-review).
 
-## Honest limits
+## ⚠️ Honest limits
 
 - It's only as good as the models. The ops swarm is stochastic, which is why it runs rounds, and a fully reworded duplicate finding can still slip past the dedup.
 - The Oracle fixes false positives, not false negatives. If no Smith looks at a file, nothing catches what it missed.
 - Forensics read git authorship. They surface real contributor names from history and need a few months of commits to mean anything.
 - Run it on repos you own or are cleared to scan. It names secrets by location, never by value, and it never touches production on its own.
 
-## Status
+## 🚦 Status
 
 Working today: the architecture Smith, the ops swarm, the Oracle, the deterministic extractors, the git forensics, the multi-file forge, the `AGENTS.md` output, the self-learning memory, and a forensic dashboard for browsing results across repos. Next on my list is smarter dedup (the current word-overlap trick is fine, not clever) and a deeper deploy read across more stacks.
