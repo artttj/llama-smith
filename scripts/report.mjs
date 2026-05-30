@@ -167,20 +167,15 @@ const avatarImg = (full, cls = '') => {
 
 const AREA_LABELS = { overview: 'Overview', modules: 'Modules', dataflow: 'Data flow', datamodel: 'Data model', entrypoints: 'Entrypoints', abstractions: 'Concepts' }
 
-const chart = (icon, title, { bigNumber, subtitle, explanation, body }) => (body ? `<div class="panel" style="padding:1.25rem;display:flex;flex-direction:column;height:100%">
-  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">
-    <span style="display:flex;align-items:center;justify-content:center;width:18px;height:18px">${icon}</span>
-    <span>${esc(title)}</span>
-  </div>
-
-  ${bigNumber != null ? `<div style="margin-bottom:0.5rem">
-    <div style="font-size:2rem;font-weight:700;color:var(--text-primary);font-family:var(--font-mono);line-height:1.1">${bigNumber}</div>
-    ${subtitle ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">${esc(subtitle)}</div>` : ''}
+const chart = (icon, title, { bigNumber, subtitle, explanation, body, status, accent } = {}) => (body ? `<div class="panel stat-card">
+  <div class="stat-cap"><span class="stat-cap-ico">${icon}</span>${esc(title)}</div>
+  ${bigNumber != null || status ? `<div class="stat-head">
+    ${bigNumber != null ? `<span class="stat-num"${accent ? ` style="color:${accent}"` : ''}>${bigNumber}</span>` : ''}
+    ${status ? `<span class="stat-chip" style="color:${status.color};border-color:${status.color}">${esc(status.label)}</span>` : ''}
+    ${subtitle ? `<span class="stat-sub">${esc(subtitle)}</span>` : ''}
   </div>` : ''}
-
-  ${explanation ? `<p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.5;margin-bottom:1rem;flex-shrink:0">${esc(explanation)}</p>` : ''}
-
-  <div style="margin-top:auto">${body}</div>
+  ${explanation ? `<p class="stat-exp">${esc(explanation)}</p>` : ''}
+  <div class="stat-body">${body}</div>
 </div>` : '')
 
 function vibeScore(r) {
@@ -216,6 +211,11 @@ function barChart(rows, { unit = '' } = {}) {
 }
 
 const shortPath = f => f.split('/').slice(-2).join('/')
+const baseName = f => String(f).split('/').pop()
+
+// One color scale so color means the same thing on every forensic card.
+const CONCERN = { critical: 'var(--red)', high: 'oklch(68% 0.2 40)', watch: 'var(--amber)', healthy: 'var(--green-brand)', neutral: 'var(--cyan)' }
+const concernByPct = p => p >= 80 ? 'critical' : p >= 60 ? 'high' : p >= 40 ? 'watch' : 'healthy'
 
 
 function archCoverage(architecture) {
@@ -489,177 +489,176 @@ function segbar(segments, { unit = '' } = {}) {
   return `<div class="sevbar" style="margin-top:0.75rem" role="img" aria-label="segmented bar"><div class="sevbar-track">${track}</div><div class="sevbar-legend">${legend}</div></div>`
 }
 
+// One ranked row shared by hotspots, modules, contributors, coupling — keeps
+// them visually comparable and on the shared CONCERN color scale.
+const frow = ({ label, full, fill, width, val, tag, tagColor, avatar }) => `<div class="frow">
+  ${avatar || ''}
+  <span class="frow-label"${full ? ` title="${esc(full)}"` : ''}>${esc(label)}</span>
+  <span class="frow-track"><span class="frow-fill" style="width:${Math.max(3, width)}%;background:${fill}"></span></span>
+  <span class="frow-val">${val}</span>
+  ${tag ? `<span class="frow-tag" style="color:${tagColor}">${esc(tag)}</span>` : ''}
+</div>`
+
+const healthRow = (label, value, color) => `<div class="health-row"><span>${esc(label)}</span><b${color ? ` style="color:${color}"` : ''}>${esc(value)}</b></div>`
+
 function repoSignals(r, h, m, l, fr) {
   const hot = r.newCodeHotspots || []
   const soSet = new Set((fr?.singleOwner || []).map(s => s.file))
   const totFindings = h + m + l
   const so = fr?.singleOwner?.length || 0
   const codeN = fr?.codeFiles || 0
+  const arch = r.architecture || []
+
+  const cited = (r.opsFindings || []).filter(f => f.file && f.file !== 'unknown').length + arch.filter(a => a.file && a.file !== 'unknown').length
+  const claims = (r.opsFindings || []).length + arch.length
+  const cov = claims ? Math.round((cited / claims) * 100) : 100
+  const covColor = cov >= 90 ? CONCERN.healthy : cov >= 70 ? CONCERN.watch : CONCERN.critical
+  const archFacts = archCoverage(arch).reduce((s, a) => s + a.value, 0)
 
   const cards = []
 
+  // 1. Repo health — the lead summary, not a lone bus-factor number.
+  const grade = vibeScore(r)
+  const gColor = grade.tier === 'low' ? CONCERN.healthy : grade.tier === 'high' ? CONCERN.critical : CONCERN.watch
+  const healthSentence = grade.tier === 'low' ? 'Low operational risk — well grounded and broadly owned.'
+    : grade.tier === 'high' ? 'Elevated risk — concentrated ownership or unresolved findings.'
+    : 'Moderate risk — some concentration or findings to watch.'
+  const healthRows = [
+    totFindings ? healthRow('Findings', `${h}H · ${m}M · ${l}L`, h ? CONCERN.critical : CONCERN.watch) : healthRow('Findings', 'none', CONCERN.healthy),
+    fr && 'busFactor' in fr ? healthRow('Bus factor', String(fr.busFactor), fr.busFactor <= 1 ? CONCERN.critical : fr.busFactor <= 2 ? CONCERN.watch : CONCERN.healthy) : '',
+    healthRow('Citation coverage', `${cov}%`, covColor),
+    archFacts ? healthRow('Architecture facts', String(archFacts), CONCERN.neutral) : '',
+  ].filter(Boolean).join('')
+  cards.push(chart(I.shield, 'Repo health', {
+    bigNumber: grade.score, accent: gColor, subtitle: '/ 100',
+    status: { label: `Grade ${grade.grade}`, color: gColor },
+    explanation: healthSentence,
+    body: `<div class="health-list">${healthRows}</div>`,
+  }))
+
   if (totFindings > 0) {
     const severityBar = segbar([
-      { value: h, color: 'var(--red)', label: 'High' },
-      { value: m, color: 'var(--amber)', label: 'Medium' },
-      { value: l, color: 'var(--green-brand)', label: 'Low' },
+      { value: h, color: CONCERN.critical, label: 'High' },
+      { value: m, color: CONCERN.watch, label: 'Medium' },
+      { value: l, color: CONCERN.healthy, label: 'Low' },
     ])
-
-    const explanation = h > 0 ? `${h} high-priority issue${h > 1 ? 's' : ''} need review.` : `${totFindings} findings, none critical.`
-
     cards.push(chart(I.high, 'Findings by severity', {
-      bigNumber: `${totFindings}`,
-      subtitle: 'total findings',
-      explanation,
-      body: severityBar
+      bigNumber: `${totFindings}`, subtitle: 'total findings',
+      status: h ? { label: `${h} high`, color: CONCERN.critical } : { label: 'no critical', color: CONCERN.healthy },
+      explanation: h > 0 ? `${h} high-priority issue${h > 1 ? 's' : ''} need review.` : `${totFindings} findings, none critical.`,
+      body: severityBar,
     }))
   }
 
   if (codeN > 0) {
     const sharedFiles = Math.max(0, codeN - so)
-    const riskText = so > 10 ? `${so} files concentrate ownership risk.` : so > 0 ? 'Low ownership concentration.' : 'Ownership well distributed.'
-
-    const splitBar = segbar([
-      { value: so, color: 'var(--amber)', label: 'Single-owner' },
-      { value: sharedFiles, color: 'var(--green-brand)', label: 'Shared' },
-    ])
-
+    const soPct = Math.round((so / codeN) * 100)
     cards.push(chart(I.users, 'Ownership concentration', {
-      bigNumber: `${codeN}`,
-      subtitle: 'code files',
-      explanation: riskText,
-      body: splitBar
+      bigNumber: `${codeN}`, subtitle: 'code files',
+      status: so > 10 ? { label: 'watch', color: CONCERN.watch } : { label: 'healthy', color: CONCERN.healthy },
+      explanation: so > 10 ? `${so} files (${soPct}%) have a single owner.` : so > 0 ? `${so} single-owner files — low concentration.` : 'Ownership well distributed.',
+      body: segbar([
+        { value: so, color: CONCERN.watch, label: 'Single-owner' },
+        { value: sharedFiles, color: CONCERN.healthy, label: 'Shared' },
+      ]),
     }))
   }
 
-  const archRows = archCoverage(r.architecture)
+  const archRows = archCoverage(arch)
   if (archRows.length > 0) {
-    const totalArch = archRows.reduce((sum, a) => sum + a.value, 0)
     const maxArch = Math.max(...archRows.map(x => x.value))
-    const archBars = archRows.slice(0, 5).map(a => {
-      const pct = Math.round((a.value / maxArch) * 100)
-      return `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
-        <span style="width:90px;font-size:0.8rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.label)}</span>
-        <span style="flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden">
-          <span style="display:block;width:${pct}%;height:100%;background:var(--cyan);border-radius:3px"></span>
-        </span>
-        <span style="width:30px;text-align:right;font-size:0.8rem;color:var(--text-secondary)">${a.value}</span>
-      </div>`
-    }).join('')
-
+    const archBars = archRows.slice(0, 6).map(a => frow({ label: a.label, fill: CONCERN.neutral, width: Math.round((a.value / maxArch) * 100), val: a.value })).join('')
     cards.push(chart(I.layers, 'Architecture map coverage', {
-      bigNumber: `${totalArch}`,
-      subtitle: 'facts captured',
-      explanation: `${totalArch} facts across ${archRows.length} of 6 architecture dimensions.`,
-      body: `<div style="margin-top:0.75rem">${archBars}</div>`
+      bigNumber: `${archFacts}`, subtitle: 'facts captured',
+      status: { label: `${archRows.length}/6 dims`, color: CONCERN.neutral },
+      explanation: `${archFacts} facts across ${archRows.length} of 6 architecture dimensions.`,
+      body: `<div class="stat-rows">${archBars}</div>`,
     }))
   }
 
   if (fr && 'busFactor' in fr) {
-    const riskColor = { CRITICAL: 'var(--red)', HIGH: 'var(--amber)', MODERATE: 'var(--amber)', GOOD: 'var(--green-brand)' }
-    const color = riskColor[fr.risk] || 'var(--text-muted)'
-
-    const riskBar = `<div style="margin-top:0.75rem">
-      <div style="display:flex;gap:0.375rem;justify-content:center">
-        ${['CRITICAL', 'HIGH', 'MODERATE', 'GOOD'].map(t => `
-          <span style="padding:0.2rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:500;background:${t === fr.risk ? color : 'var(--surface)'};color:${t === fr.risk ? 'var(--bg)' : 'var(--text-muted)'}">${t}</span>
-        `).join('')}
-      </div>
-      ${fr.keyPeople?.length ? `<p style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted);text-align:center">${fr.keyPeople.slice(0, 2).map(p => esc(p.name)).join(', ')}${fr.keyPeople.length > 2 ? ' and others' : ''} hold most code</p>` : ''}
-    </div>`
-
-    const explanation = fr.risk === 'CRITICAL' ? 'Critical knowledge concentration.' : fr.risk === 'GOOD' ? 'Knowledge well distributed.' : 'Elevated knowledge risk.'
-
-    cards.push(chart(I.bus, 'Ownership Risk', {
-      bigNumber: `${fr.busFactor}`,
-      subtitle: 'bus factor',
-      explanation,
-      body: riskBar
+    const rmap = { CRITICAL: 'critical', HIGH: 'high', MODERATE: 'watch', GOOD: 'healthy' }
+    const ck = rmap[fr.risk] || 'neutral'
+    const peopleRows = [
+      fr.keyPeople?.length ? healthRow('Hold most code', `${fr.keyPeople.slice(0, 2).map(p => p.name).join(', ')}${fr.keyPeople.length > 2 ? ` +${fr.keyPeople.length - 2}` : ''}`, CONCERN[ck]) : '',
+      fr.contributors ? healthRow('Contributors', fr.contributors.toLocaleString(), CONCERN.neutral) : '',
+    ].filter(Boolean).join('')
+    cards.push(chart(I.bus, 'Ownership risk', {
+      bigNumber: `${fr.busFactor}`, subtitle: 'bus factor',
+      status: { label: fr.risk, color: CONCERN[ck] },
+      explanation: fr.risk === 'CRITICAL' ? 'Critical knowledge concentration.' : fr.risk === 'GOOD' ? 'Knowledge well distributed.' : 'Elevated knowledge risk.',
+      body: `<div class="health-list">${peopleRows || healthRow('Single-owner files', String(so), so ? CONCERN.watch : CONCERN.healthy)}</div>`,
     }))
   }
 
   if (hot.length > 0) {
-    const maxEdits = Math.max(...hot.map(h => h.edits))
+    const maxEdits = Math.max(...hot.map(x => x.edits))
+    const risky = hot.filter(x => soSet.has(x.file)).length
     const hotBars = hot.slice(0, 5).map(x => {
-      const pct = Math.round((x.edits / maxEdits) * 100)
       const isRisky = soSet.has(x.file)
-      return `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
-        <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(x.file)}">${esc(shortPath(x.file))}</span>
-        <span style="width:60px;height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden">
-          <span style="display:block;width:${pct}%;height:100%;background:${isRisky ? 'var(--red)' : 'var(--amber)'};border-radius:3px"></span>
-        </span>
-        <span style="width:35px;text-align:right;font-size:0.75rem;color:${isRisky ? 'var(--red)' : 'var(--text-muted)'}">${x.edits}${isRisky ? ' ⚠' : ''}</span>
-      </div>`
+      return frow({ label: shortPath(x.file), full: x.file, fill: isRisky ? CONCERN.critical : CONCERN.watch, width: Math.round((x.edits / maxEdits) * 100), val: x.edits, tag: isRisky ? 'single-owner' : '', tagColor: CONCERN.critical })
     }).join('')
-
     cards.push(chart(I.bug, 'Highest churn hotspots', {
-      bigNumber: `${hot.length}`,
-      subtitle: 'hot files',
+      bigNumber: `${hot.length}`, subtitle: 'hot files',
+      status: risky ? { label: `${risky} single-owner`, color: CONCERN.critical } : { label: 'shared', color: CONCERN.healthy },
       explanation: 'Files with the most edits over the last year.',
-      body: `<div style="margin-top:0.75rem">${hotBars}</div>`
+      body: `<div class="stat-rows">${hotBars}</div>`,
     }))
   }
 
-  const moduleRows = (fr?.modules || []).map(mo => ({ label: mo.module + '/', value: Math.round(mo.share * 100), danger: mo.share >= 0.8 }))
+  const moduleRows = (fr?.modules || []).map(mo => ({ label: mo.module + '/', value: Math.round(mo.share * 100) }))
   if (moduleRows.length > 0) {
-    const modBars = moduleRows.slice(0, 5).map(m => `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
-      <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.label)}</span>
-      <span style="width:50px;height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden">
-        <span style="display:block;width:${m.value}%;height:100%;background:${m.danger ? 'var(--red)' : 'var(--green-brand)'};border-radius:3px"></span>
-      </span>
-      <span style="width:30px;text-align:right;font-size:0.75rem;color:${m.danger ? 'var(--red)' : 'var(--text-muted)'}">${m.value}%</span>
-    </div>`).join('')
-
-    const highConcentration = moduleRows.filter(m => m.danger).length
-    const explanation = highConcentration > 0 ? `${highConcentration} modules with >80% ownership concentration.` : 'Module ownership well distributed.'
-
-    cards.push(chart(I.users, 'Ownership by module', {
-      bigNumber: `${moduleRows.length}`,
-      subtitle: 'modules',
-      explanation,
-      body: `<div style="margin-top:0.75rem">${modBars}</div>`
+    const modBars = moduleRows.slice(0, 5).map(mo => {
+      const ck = concernByPct(mo.value)
+      return frow({ label: mo.label, fill: CONCERN[ck], width: mo.value, val: `${mo.value}%`, tag: ck, tagColor: CONCERN[ck] })
+    }).join('')
+    const critical = moduleRows.filter(mo => mo.value >= 80).length
+    cards.push(chart(I.layers, 'Ownership by module', {
+      bigNumber: `${moduleRows.length}`, subtitle: 'modules',
+      status: critical ? { label: `${critical} critical`, color: CONCERN.critical } : { label: 'distributed', color: CONCERN.healthy },
+      explanation: critical > 0 ? `${critical} module${critical > 1 ? 's' : ''} above 80% single-owner concentration.` : 'Module ownership well distributed.',
+      body: `<div class="stat-rows">${modBars}</div>`,
     }))
   }
 
   const contribRows = (fr?.topContributors || []).map(t => ({ label: t.name, value: t.commits, login: t.login }))
   if (contribRows.length > 0) {
     const maxCommits = Math.max(...contribRows.map(c => c.value))
-    const contribBars = contribRows.slice(0, 5).map(c => `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
-      ${c.login ? `<img src="https://github.com/${esc(c.login)}.png?size=32" width="20" height="20" style="border-radius:50%;flex-shrink:0" loading="lazy" alt="${esc(c.label)}" />` : `<span style="width:20px;height:20px;border-radius:50%;background:var(--surface-2);flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:var(--text-muted)">${esc((c.label || '').slice(0, 2).toUpperCase())}</span>`}
-      <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.label)}</span>
-      <span style="width:50px;height:4px;background:var(--surface-2);border-radius:2px;overflow:hidden">
-        <span style="display:block;width:${Math.round((c.value / maxCommits) * 100)}%;height:100%;background:var(--cyan);border-radius:2px"></span>
-      </span>
-      <span style="width:40px;text-align:right;font-size:0.75rem;color:var(--text-muted)">${c.value.toLocaleString()}</span>
-    </div>`).join('')
-
+    const contribBars = contribRows.slice(0, 5).map(c => {
+      const avatar = c.login
+        ? `<img class="frow-avatar" src="https://github.com/${esc(c.login)}.png?size=48" width="28" height="28" loading="lazy" alt="${esc(c.label)}">`
+        : `<span class="frow-avatar frow-avatar-fallback">${esc((c.label || '').slice(0, 2).toUpperCase())}</span>`
+      return frow({ avatar, label: c.label, fill: CONCERN.neutral, width: Math.round((c.value / maxCommits) * 100), val: c.value.toLocaleString() })
+    }).join('')
     const totalContribs = contribRows.reduce((sum, c) => sum + c.value, 0)
     const allContribs = fr.contributors || contribRows.length
-
     cards.push(chart(I.users, 'Top contributors', {
       explanation: `${totalContribs.toLocaleString()} commits from the top ${contribRows.length}${allContribs > contribRows.length ? ` of ${allContribs.toLocaleString()}` : ''} contributors.`,
-      body: `<div style="margin-top:0.25rem">${contribBars}</div>`
+      body: `<div class="stat-rows stat-rows-lg">${contribBars}</div>`,
     }))
   }
 
-  const couplingRows = (fr?.coupling || []).map(c => ({ label: `${shortPath(c.a)} ↔ ${shortPath(c.b)}`, full: `${c.a} ↔ ${c.b}`, value: c.count }))
+  const couplingRows = (fr?.coupling || []).map(c => ({ label: `${baseName(c.a)} ↔ ${baseName(c.b)}`, full: `${c.a} ↔ ${c.b}`, value: c.count }))
   if (couplingRows.length > 0) {
     const maxCount = Math.max(...couplingRows.map(c => c.value))
-    const couplingBars = couplingRows.slice(0, 5).map(c => `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
-      <span style="flex:1;font-size:0.75rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(c.full)}">${esc(c.label)}</span>
-      <span style="width:40px;height:4px;background:var(--surface-2);border-radius:2px;overflow:hidden">
-        <span style="display:block;width:${Math.round((c.value / maxCount) * 100)}%;height:100%;background:var(--amber);border-radius:2px"></span>
-      </span>
-      <span style="width:25px;text-align:right;font-size:0.75rem;color:var(--text-muted)">${c.value}</span>
-    </div>`).join('')
-
-    cards.push(chart(I.branch, 'Change Coupling', {
-      bigNumber: `${couplingRows.length}`,
-      subtitle: 'coupled pairs',
-      explanation: 'Files that change together frequently.',
-      body: `<div style="margin-top:0.75rem">${couplingBars}</div>`
+    const couplingBars = couplingRows.slice(0, 5).map(c => frow({ label: c.label, full: c.full, fill: CONCERN.watch, width: Math.round((c.value / maxCount) * 100), val: c.value })).join('')
+    cards.push(chart(I.branch, 'Change coupling', {
+      bigNumber: `${couplingRows.length}`, subtitle: 'coupled pairs',
+      explanation: 'Files that change together most often.',
+      body: `<div class="stat-rows">${couplingBars}</div>`,
     }))
   }
+
+  // Last card anchors the right edge so the grid never trails into empty black.
+  cards.push(chart(I.eye, 'Oracle verdict', {
+    status: { label: 'validated', color: CONCERN.healthy },
+    explanation: r.verdict || 'Every surviving claim was re-read against the file it cites; uncited claims were dropped.',
+    body: `<div class="health-list">
+      ${healthRow('Claims cited', `${cited} / ${claims}`, CONCERN.healthy)}
+      ${healthRow('Citation coverage', `${cov}%`, covColor)}
+      ${healthRow('Uncited or unknown', String(claims - cited), claims - cited ? CONCERN.watch : CONCERN.healthy)}
+    </div>`,
+  }))
 
   return cards.join('')
 }

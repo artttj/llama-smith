@@ -64,9 +64,9 @@ Each repo gets its own page, and the forged skill is the headline, not something
 
 ![a forged skill report](assets/screenshots/report.png)
 
-Under the skill is the evidence it was built from. Findings by severity and the single-owner/shared split are donut charts; bus factor, hot files, architecture coverage, and module ownership are bars. Each repo carries a risk score (A–F) from its validated findings, ownership concentration, and how much of the architecture the Smiths mapped. You can delete a report straight from the dashboard.
+Under the skill is the evidence it was built from. A repo-health card leads with the A–F grade, then segmented bars break down findings by severity and single-owner versus shared code, and ranked bars cover churn hotspots, architecture coverage, module ownership, and top contributors. An Oracle verdict card closes the page with the citation coverage. The grade comes from validated findings, ownership concentration, and how much of the architecture the Smiths mapped. You can delete a report straight from the dashboard.
 
-Colors are semantic: green validated, red high severity, amber warning, cyan metadata. Each page inlines its own CSS and hero image, so a single `.html` file works anywhere.
+Color carries one meaning each: green healthy, red critical, amber watch, cyan neutral evidence. Each page inlines its own CSS and hero image, so a single `.html` file works anywhere.
 
 ## 🔌 Install (Claude Code plugin)
 
