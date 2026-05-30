@@ -16,6 +16,7 @@ export function createDashboardServer(port = 7777, root = join(LS, 'reports')) {
     catch { res.writeHead(400, { 'Cache-Control': 'no-store' }).end('bad request'); return }
     if (rel === '/api/delete') {
       if (req.method !== 'POST') { res.writeHead(405, { 'Cache-Control': 'no-store' }).end('method not allowed'); return }
+      if (req.headers['x-requested-with'] !== 'llama-smith') { res.writeHead(403, { 'Cache-Control': 'no-store' }).end('forbidden'); return }
       let raw = ''
       for await (const chunk of req) raw += chunk
       let repo

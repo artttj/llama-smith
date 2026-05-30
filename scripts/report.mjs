@@ -67,7 +67,7 @@ const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(func
 const COPY_JS = `document.querySelectorAll('.copy-skill').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.skill||'');var t=b.textContent;b.textContent='Copied!';setTimeout(function(){b.textContent=t},1500)})});`
 const TECH_JS = `document.querySelectorAll('.tech-more').forEach(function(b){b.addEventListener('click',function(){var h=b.previousElementSibling;if(h&&h.classList.contains('tech-hidden'))h.style.display='inline';b.remove()})});`
 const TRASH_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
-const DELETE_JS = `document.querySelectorAll('.delete-report').forEach(function(b){b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var repo=b.dataset.repo;if(!confirm('Delete the report for '+repo+'? The forged skill inside the repo is not affected.'))return;b.disabled=true;b.textContent='Deleting…';fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({repo:repo})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(){var c=b.closest('[data-report-card]');if(c){c.remove()}else{location.href='index.html'}}).catch(function(){b.disabled=false;b.textContent='Delete failed — retry'})})});`
+const DELETE_JS = `document.querySelectorAll('.delete-report').forEach(function(b){b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var repo=b.dataset.repo;if(!confirm('Delete the report for '+repo+'? The forged skill inside the repo is not affected.'))return;b.disabled=true;b.textContent='Deleting…';fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'llama-smith'},body:JSON.stringify({repo:repo})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(){var c=b.closest('[data-report-card]');if(c){c.remove()}else{location.href='index.html'}}).catch(function(){b.disabled=false;b.textContent='Delete failed — retry'})})});`
 
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -150,12 +150,13 @@ function repoBlurb(r) {
   const pick = arch.find(a => a.area === 'overview') || arch.find(a => a.area === 'abstractions') || arch.find(a => a.area === 'modules') || arch.find(a => a.area === 'entrypoints')
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
   const spine = String(r.blurb || (pick && pick.claim) || repoStack(r)).replace(/\s*\.\s*$/, '')
-  let verdict
-  if (statusOf(r) === 'failed') verdict = 'the construct could not read it'
-  else if (h) verdict = `carrying ${h} high-severity ${h > 1 ? 'traps' : 'trap'} the Smiths dragged into the light`
-  else if (m + l) verdict = `mostly clean — ${m + l} minor note${m + l > 1 ? 's' : ''}, nothing critical`
-  else verdict = 'pipeline came back clean, nothing to hide'
-  return `${spine} — ${verdict}.`
+  if (statusOf(r) === 'failed') return `${spine}. The construct could not read it.`
+  const counts = [h && `${h} high`, m && `${m} med`, l && `${l} low`].filter(Boolean).join(', ')
+  if (!counts) return `${spine}. Clean scan — no operational risk found.`
+  const top = (r.opsFindings || []).find(f => f.severity === 'high') || (r.opsFindings || []).find(f => f.severity === 'medium')
+  const tx = top ? top.text.replace(/\s*\.?\s*$/, '') : ''
+  const topTxt = tx ? ` Top risk: ${tx.length > 150 ? tx.slice(0, 150).replace(/\s+\S*$/, '') + '…' : tx}.` : ''
+  return `${spine}. ${counts} finding${(h + m + l) > 1 ? 's' : ''}.${topTxt}`
 }
 
 const ownerOf = full => (full.includes('/') ? full.split('/')[0] : '')
