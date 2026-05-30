@@ -77,7 +77,7 @@ F.querySelectorAll('[data-fi]').forEach(el=>el.addEventListener('click',()=>{con
 D.forEach(d=>d.querySelector('summary').addEventListener('click',()=>{if(!d.open)setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'nearest'}),0)}));
 const t=F.querySelector('.md-toggle');if(t)t.addEventListener('click',()=>{const on=F.classList.toggle('rich');t.setAttribute('aria-pressed',on);t.lastChild.textContent=on?' raw markdown':' rich text'});});`
 
-const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(function(g){g.addEventListener('error',function(){var s=document.createElement('span');s.className=g.className+' broken';s.textContent=g.dataset.initials||'';s.title=g.alt||'';g.replaceWith(s)})});`
+const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(function(g){function sw(){var s=document.createElement('span');s.className=g.className+' broken';s.textContent=g.dataset.initials||'';s.title=g.alt||'';g.replaceWith(s)}g.addEventListener('error',sw);if(g.complete&&g.naturalWidth===0)sw()});`
 
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
