@@ -26,6 +26,15 @@
   --red-glow: oklch(60% 0.22 25 / 0.3);
   --amber: oklch(75% 0.15 75);
   --cyan: oklch(70% 0.08 195);
+  --link-visited: oklch(70% 0.14 305);
+
+  /* Severity aliases for code */
+  --high: var(--red);
+  --medium: var(--amber);
+  --low: var(--green-brand);
+
+  /* Additional surface layer */
+  --surface-2: oklch(20% 0.025 150);
 
   /* Text hierarchy */
   --text-primary: oklch(92% 0.01 150);
@@ -36,6 +45,7 @@
   /* Typography */
   --font-display: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-body: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: var(--font-body);
 
   /* Spacing */
   --r-lg: 16px;
@@ -167,6 +177,9 @@ body::after {
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+.display-xl .hl {
   color: var(--green-hot);
   text-shadow: 0 0 24px var(--green-glow);
 }
@@ -815,6 +828,103 @@ body::after {
   gap: 0.75rem;
 }
 
+.hero-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1.5rem;
+  padding: 0.55rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: clamp(0.95rem, 0.8rem + 0.55vw, 1.2rem);
+}
+.hero-cmd-prompt { color: var(--green-brand); font-weight: 700; }
+.cmd-rainbow {
+  font-weight: 700;
+  background: linear-gradient(90deg, #3ddc84, #00d2ff, #b16cea, #ff6ad5, #ffc371, #3ddc84);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: cmd-rainbow 6s linear infinite;
+  filter: drop-shadow(0 0 8px var(--green-glow));
+}
+@keyframes cmd-rainbow { to { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cmd-rainbow { animation: none; }
+}
+
+.footer a:visited, .footer-sub a:visited, .footer-main a:visited { color: var(--link-visited); }
+
+.evidence-strip { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: center; }
+.ev-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.ev-pill b { color: var(--text-primary); font-weight: 700; }
+details.evidence-details > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--green-brand);
+  padding: 0.5rem 0;
+  user-select: none;
+}
+details.evidence-details > summary::-webkit-details-marker { display: none; }
+details.evidence-details > summary::before { content: "\25B8"; transition: transform 0.15s; }
+details.evidence-details[open] > summary::before { transform: rotate(90deg); }
+
+.btn-danger { border: 1px solid var(--red); color: var(--red); background: transparent; }
+.btn-danger:hover { background: var(--red); color: var(--bg); box-shadow: 0 0 16px var(--red-glow); }
+.card-delete {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.card-delete:hover { border-color: var(--red); color: var(--red); }
+
+.score-ring {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  font-family: var(--font-mono);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.score-ring-num { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); }
+.score-ring-grade { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; margin-top: 2px; }
+
 /* Hero layout */
 .hero {
   display: grid;
@@ -829,7 +939,8 @@ body::after {
   width: min(280px, 50vw);
   height: auto;
   border-radius: var(--r);
-  opacity: 0.9;
+  opacity: 1;
+  filter: brightness(1.28) saturate(1.05);
 }
 
 .hero-content {

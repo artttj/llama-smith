@@ -3,14 +3,14 @@
   "owner": { "name": "artttj", "url": "https://github.com/artttj" },
   "metadata": {
     "description": "Repo forensics → a self-learning Claude Code ops skill, forged by a local Ollama swarm with an Oracle validator.",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "llama-smith",
       "source": "./",
       "description": "Point it at a repo; a swarm of local Ollama Smiths reads how it deploys, leaks, and breaks, the Oracle validates each finding against its cited file, and a self-learning <repo>-matrix skill is forged.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": { "name": "Artem Iagovdik", "email": "artem.iagovdik@y1.de" },
       "keywords": ["forensics", "skills", "ollama", "devops", "matrix"]
     }

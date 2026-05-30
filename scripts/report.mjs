@@ -1,6 +1,3 @@
-// Render real-repo probe results into a Matrix-flavored, readable dashboard:
-// a hero index (scanned sites + glitch feed) and one forensic page per repo.
-// Usage: node scripts/report.mjs [results.json] [outDir]
 import { readFileSync, writeFileSync, mkdirSync, realpathSync, existsSync, copyFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,9 +5,8 @@ import { buildSkillFiles, adaptLessons } from '../lib/skill.mjs'
 import { FRESH_DAYS, STALE_DAYS } from '../lib/freshness.mjs'
 
 const LS = realpathSync(dirname(dirname(fileURLToPath(import.meta.url))))
-const src = process.argv[2] || '/tmp/ls-results.json'
 const outDir = process.argv[3] || join(LS, 'reports')
-let data = JSON.parse(readFileSync(src, 'utf8'))
+let data = []
 
 const FULL = {
   laravel: 'laravel/framework', nextjs: 'vercel/next.js', astro: 'withastro/astro', drizzle: 'drizzle-team/drizzle-orm', hono: 'honojs/hono',
@@ -25,28 +21,14 @@ const STACK = {
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 const sevCount = (r, s) => (r.opsFindings || []).filter(f => f.severity === s).length
-const SEVRANK = { high: 0, medium: 1, low: 2 }
 const repoFull = r => r.fullName || FULL[r.repo] || r.repo
 const repoStack = r => r.stack || STACK[r.repo] || '?'
-const repoStars = r => r.stars ?? null
 const readAsset = f => { const p = join(LS, 'assets', f); return existsSync(p) ? readFileSync(p, 'utf8').replace(/\n+$/, '') : '' }
-const safeName = s => String(s).replace(/[^a-zA-Z0-9._-]/g, '_')
-const rescanCommand = r => {
-  if (!r) return ''
-  const bin = join(LS, 'llama-smith.mjs')
-  if (r.repoPath) {
-    const q = s => s.includes(' ') ? `"${s}"` : s
-    return `node ${q(bin)} ${q(r.repoPath)}`
-  }
-  if (r.repo) return `cd ../${r.repo} && node llama-smith.mjs .`
-  return ''
-}
-const rescanBtn = cmd => cmd ? `<button type="button" class="rescan-btn" data-cmd="${esc(cmd)}" aria-label="Copy re-scan command to clipboard">⟳ re-scan</button>` : ''
+export const safeName = s => String(s).replace(/[^a-zA-Z0-9._-]/g, '_')
 const HERO_SRC = join(LS, 'assets', 'hero.webp')
 const HAS_HERO = existsSync(HERO_SRC)
 const HERO_DATA = HAS_HERO ? `data:image/webp;base64,${readFileSync(HERO_SRC).toString('base64')}` : ''
 
-// Lucide line icons, inlined (offline, themeable via currentColor).
 const SVG = i => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${i}</svg>`
 const I = {
   scan: SVG('<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>'),
@@ -70,9 +52,6 @@ const I = {
   users: SVG('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
   layers: SVG('<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'),
 }
-const SMITH_ICON = { deploy: 'rocket', secret: 'key', cron: 'cron', ci: 'branch', scar: 'bug' }
-const SMITH_STAMP = { deploy: 'DEPLOY-SMITH', secret: 'SECRET-SMITH', cron: 'CRON-SMITH', ci: 'CI-SMITH', scar: 'SCAR-SMITH' }
-const stamp = t => `<span class="stamp">[${esc(t)}]</span>`
 
 const CSS = readAsset("dashboard-v2.css")  // editable in assets/dashboard-v2.css, inlined at build
 
@@ -83,15 +62,12 @@ function s(){c.width=innerWidth;c.height=innerHeight;cols=Math.floor(c.width/14)
 (function f(){x.fillStyle='rgba(7,13,9,0.09)';x.fillRect(0,0,c.width,c.height);x.fillStyle='#3ddc84';x.font='13px monospace';
 for(let i=0;i<cols;i++){x.fillText(g[Math.floor(Math.random()*g.length)],i*14,d[i]*14);if(d[i]*14>c.height&&Math.random()>0.975)d[i]=0;d[i]++}
 requestAnimationFrame(()=>setTimeout(f,55))})();}`
-// Skill folder: accordion. Open one file, collapse the rest, smooth-scroll to it.
-const FILES_JS = `document.querySelectorAll('.skillfolder').forEach(F=>{const D=[...F.querySelectorAll('.sf')];
-D.forEach(d=>d.addEventListener('toggle',()=>{if(d.open)D.forEach(o=>{if(o!==d)o.open=false})}));
-F.querySelectorAll('[data-fi]').forEach(el=>el.addEventListener('click',()=>{const i=+el.dataset.fi;D.forEach((o,j)=>o.open=(j===i));D[i].scrollIntoView({behavior:'smooth',block:'start'})}));
-D.forEach(d=>d.querySelector('summary').addEventListener('click',()=>{if(!d.open)setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'nearest'}),0)}));
-const t=F.querySelector('.md-toggle');if(t)t.addEventListener('click',()=>{const on=F.classList.toggle('rich');t.setAttribute('aria-pressed',on);t.lastChild.textContent=on?' raw markdown':' rich text'});});`
 
 const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(function(g){function sw(){var s=document.createElement('span');s.className=g.className+' broken';s.textContent=g.dataset.initials||'';s.title=g.alt||'';g.replaceWith(s)}g.addEventListener('error',sw);if(g.complete&&g.naturalWidth===0)sw()});`
-const RESCAN_JS = `document.querySelectorAll('.rescan-btn').forEach(b=>{b.addEventListener('click',()=>{const cmd=b.dataset.cmd;try{navigator.clipboard.writeText(cmd)}catch{const ta=document.createElement('textarea');ta.value=cmd;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}const t=document.getElementById('toast');t.textContent='Copied — paste in terminal';t.classList.add('show');setTimeout(()=>{t.classList.remove('show')},1500)})});`
+const COPY_JS = `document.querySelectorAll('.copy-skill').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.skill||'');var t=b.textContent;b.textContent='Copied!';setTimeout(function(){b.textContent=t},1500)})});`
+const TECH_JS = `document.querySelectorAll('.tech-more').forEach(function(b){b.addEventListener('click',function(){var h=b.previousElementSibling;if(h&&h.classList.contains('tech-hidden'))h.style.display='inline';b.remove()})});`
+const TRASH_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+const DELETE_JS = `document.querySelectorAll('.delete-report').forEach(function(b){b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var repo=b.dataset.repo;if(!confirm('Delete the report for '+repo+'? The forged skill inside the repo is not affected.'))return;b.disabled=true;b.textContent='Deleting…';fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({repo:repo})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(){var c=b.closest('[data-report-card]');if(c){c.remove()}else{location.href='index.html'}}).catch(function(){b.disabled=false;b.textContent='Delete failed — retry'})})});`
 
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -108,8 +84,7 @@ const brandbar = () => `<header class="header">
   </a>
   <nav class="nav-actions">
     <a href="https://github.com/artttj/llama-smith" class="btn btn-sm btn-secondary" target="_blank" rel="noopener">GitHub</a>
-    <a href="#" class="btn btn-sm btn-secondary">Docs</a>
-    <button class="btn btn-sm btn-primary" onclick="alert('Run: node llama-smith.mjs <repo-path>')">Scan repo</button>
+    <a href="https://github.com/artttj/llama-smith#readme" class="btn btn-sm btn-secondary" target="_blank" rel="noopener">Docs</a>
   </nav>
 </header>`
 const siteFooter = () => `<footer class="footer">
@@ -122,8 +97,9 @@ const heroSection = () => {
   return `<div class="hero">
     ${heroImg}
     <div class="hero-content">
-      <h1 class="display-xl">Many Smiths enter.<br>One skill comes out.</h1>
+      <h1 class="display-xl">Many <span class="hl">Smiths</span> enter.<br><span class="hl">One</span> skill comes out.<br><span class="hl">The Oracle</span> keeps it honest.</h1>
       <p class="quote" style="margin-top:1.5rem">It does not summarize your repo. It forges operational memory from it.</p>
+      <div class="hero-cmd"><span class="hero-cmd-prompt">&rsaquo;</span><span class="cmd-rainbow">/llama-smith ./your-repo</span></div>
       <div class="hero-proof">
         <span class="proof-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -169,12 +145,11 @@ const heroSection = () => {
 }
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
-// Opinionated one-liner, grounded: the validated architecture overview is the
-// factual spine; the verdict is the opinion the findings earn. Never invented.
 function repoBlurb(r) {
-  const overview = (r.architecture || []).find(a => a.area === 'overview')
+  const arch = r.architecture || []
+  const pick = arch.find(a => a.area === 'overview') || arch.find(a => a.area === 'abstractions') || arch.find(a => a.area === 'modules') || arch.find(a => a.area === 'entrypoints')
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
-  const spine = overview ? overview.claim.replace(/\s*\.\s*$/, '') : `${repoStack(r)} · ${(r.commits || 0).toLocaleString()} commits deep`
+  const spine = String(r.blurb || (pick && pick.claim) || repoStack(r)).replace(/\s*\.\s*$/, '')
   let verdict
   if (statusOf(r) === 'failed') verdict = 'the construct could not read it'
   else if (h) verdict = `carrying ${h} high-severity ${h > 1 ? 'traps' : 'trap'} the Smiths dragged into the light`
@@ -189,41 +164,25 @@ const avatarImg = (full, cls = '') => {
   return o ? `<img class="avatar ${cls}" src="https://github.com/${esc(o)}.png?size=80" width="80" height="80" loading="lazy" alt="${esc(o)} avatar" data-initials="${esc(o.slice(0, 2).toUpperCase())}">` : ''
 }
 
-// Allow relative paths and fragments; reject any non-http(s)/mailto scheme
-// (references/*.md, memory.md) point at files that live inside the skill folder,
-// not the dashboard server, so render them as code instead of dead 404 links.
-const mdLink = (text, url) => /^(https?:|mailto:)/i.test(url.trim()) ? `<a href="${esc(url.trim())}" rel="noopener noreferrer">${text}</a>` : `<code>${text}</code>`
-const mdInline = s => esc(s)
-  .replace(/`([^`]+)`/g, '<code>$1</code>')
-  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) => mdLink(t, u))
-  .replace(/_\(([^)]+)\)_/g, '<em>($1)</em>')
-
-function mdToHtml(md) {
-  const out = []
-  let inList = false, para = []
-  const flushPara = () => { if (para.length) { out.push(`<p>${mdInline(para.join(' '))}</p>`); para = [] } }
-  const flushList = () => { if (inList) { out.push('</ul>'); inList = false } }
-  for (const raw of md.split('\n')) {
-    const line = raw.replace(/\s+$/, '')
-    if (!line.trim()) { flushPara(); flushList(); continue }
-    const h = line.match(/^(#{1,4})\s+(.*)$/)
-    if (h) { flushPara(); flushList(); out.push(`<h${h[1].length}>${mdInline(h[2])}</h${h[1].length}>`); continue }
-    if (/^---+$/.test(line)) { flushPara(); flushList(); out.push('<hr>'); continue }
-    if (/^>\s?/.test(line)) { flushPara(); flushList(); out.push(`<blockquote>${mdInline(line.replace(/^>\s?/, ''))}</blockquote>`); continue }
-    if (/^[-*]\s+/.test(line)) { flushPara(); if (!inList) { out.push('<ul>'); inList = true } out.push(`<li>${mdInline(line.replace(/^[-*]\s+/, ''))}</li>`); continue }
-    para.push(line.trim())
-  }
-  flushPara(); flushList()
-  return out.join('\n')
-}
 
 const AREA_LABELS = { overview: 'Overview', modules: 'Modules', dataflow: 'Data flow', datamodel: 'Data model', entrypoints: 'Entrypoints', abstractions: 'Concepts' }
-const RISK_TIER = { CRITICAL: 'high', HIGH: 'med', MODERATE: 'med', GOOD: 'low' }
 
-const chart = (icon, title, body) => (body ? `<figure class="chart"><figcaption>${icon}${title}</figcaption>${body}</figure>` : '')
+const chart = (icon, title, { bigNumber, subtitle, explanation, body }) => (body ? `<div class="panel" style="padding:1.25rem;display:flex;flex-direction:column;height:100%">
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">
+    <span style="display:flex;align-items:center;justify-content:center;width:18px;height:18px">${icon}</span>
+    <span>${esc(title)}</span>
+  </div>
 
-// bus factor, and knowledge concentration. Shown as a ring at the top.
+  ${bigNumber != null ? `<div style="margin-bottom:0.5rem">
+    <div style="font-size:2rem;font-weight:700;color:var(--text-primary);font-family:var(--font-mono);line-height:1.1">${bigNumber}</div>
+    ${subtitle ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem">${esc(subtitle)}</div>` : ''}
+  </div>` : ''}
+
+  ${explanation ? `<p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.5;margin-bottom:1rem;flex-shrink:0">${esc(explanation)}</p>` : ''}
+
+  <div style="margin-top:auto">${body}</div>
+</div>` : '')
+
 function vibeScore(r) {
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
   const fr = r.forensics
@@ -239,110 +198,25 @@ function vibeScore(r) {
   return { score: s, grade, tier }
 }
 
-function vibeGauge(r) {
-  const { score, grade, tier } = vibeScore(r)
-  const R = 52, C = +(2 * Math.PI * R).toFixed(1)
-  const off = +(C * (1 - score / 100)).toFixed(1)
-  const gradeClass = grade.toLowerCase()
-  return `<div class="vibe vibe-${tier} vibe-${gradeClass}" role="img" aria-label="repo grade ${score} out of 100, grade ${grade}">
-    <div class="vibe-disc">
-      <svg viewBox="0 0 120 120" class="vibe-ring">
-        <circle class="vt" cx="60" cy="60" r="${R}"></circle>
-        <circle class="vp" cx="60" cy="60" r="${R}" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 60 60)"></circle>
-      </svg>
-      <div class="vibe-mid"><b>${score}</b><span>${grade}</span></div>
-    </div>
-    <div class="vibe-cap">REPO GRADE</div>
-  </div>`
-}
 
-const vibeBadge = r => { const v = vibeScore(r); return `<span class="vibe-badge vibe-${v.tier} vibe-${v.grade.toLowerCase()}" title="repo grade ${v.score}/100, grade ${v.grade}">${v.score} ${v.grade}</span>` }
-
-// us a username, name initials otherwise.
-function contributorStrip(fr) {
-  const people = fr?.topContributors || []
-  if (!people.length) return ''
-  const face = p => p.login
-    ? `<img class="face" src="https://github.com/${esc(p.login)}.png?size=72" width="44" height="44" loading="lazy" alt="${esc(p.name)}" title="${esc(p.name)} · ${p.commits} commits" data-initials="${esc(p.name.slice(0, 2).toUpperCase())}">`
-    : `<span class="face initials" title="${esc(p.name)} · ${p.commits} commits">${esc(p.name.slice(0, 2).toUpperCase())}</span>`
-  return `<div class="faces">${people.map(face).join('')}<span class="faces-cap">${fr.contributors} contributors</span></div>`
-}
-
-// bus factor, architecture. labelColor matches the terminal palette.
-const TIERHEX = { low: '3ddc84', med: 'e0b341', high: 'e0563f' }
-const SHIELD = (label, message, color) => `<img class="shield" loading="lazy" height="20" alt="${esc(label)}: ${esc(message)}" src="https://img.shields.io/static/v1?style=flat-square&labelColor=3a4a3c&label=${encodeURIComponent(label)}&message=${encodeURIComponent(message)}&color=${color}">`
 const TECH_BADGE = t => `<img class="techbadge" loading="lazy" height="24" alt="${esc(t.label)}" src="https://img.shields.io/badge/${encodeURIComponent(t.label)}-${t.color}?style=flat-square${t.slug ? `&logo=${t.slug}&logoColor=white` : ''}">`
-const techBadges = r => (r.tech?.length ? `<div class="techbadges">${r.tech.map(TECH_BADGE).join('')}</div>` : '')
-function shieldRow(r) {
-  const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low'), tot = h + m + l
-  const fr = r.forensics, v = vibeScore(r)
-  const now = new Date()
-  const ageDays = r.scannedAt ? Math.floor((now - new Date(r.scannedAt)) / 86400000) : null
-  const ageHex = ageDays == null ? '8a8f87' : ageDays <= FRESH_DAYS ? TIERHEX.low : ageDays > STALE_DAYS ? TIERHEX.high : TIERHEX.med
-  const nodeVer = (r.stackFull || '').match(/node\s*([>=<\s.\d]+)/i)?.[1]?.trim()
-  return `<div class="shields">${[
-    SHIELD('stack', repoStack(r), '3ddc84'),
-    nodeVer ? SHIELD('node', nodeVer, '3ddc84') : '',
-    SHIELD('commits', (r.commits || 0).toLocaleString(), '3ddc84'),
-    fr && 'contributors' in fr ? SHIELD('contributors', String(fr.contributors), '3ddc84') : '',
-    SHIELD('vibe', `${v.score} ${v.grade}`, TIERHEX[v.tier]),
-    SHIELD('findings', String(tot), h ? TIERHEX.high : tot ? TIERHEX.med : TIERHEX.low),
-    (() => { const n = (r.opsFindings || []).filter(f => f.escalated).length; return n ? SHIELD('escalated', String(n), 'e0563f') : '' })(),
-    h ? SHIELD('critical', String(h), TIERHEX.high) : '',
-    fr && 'busFactor' in fr ? SHIELD('bus factor', `${fr.busFactor} ${fr.risk}`, TIERHEX[RISK_TIER[fr.risk]] || '3ddc84') : '',
-    fr?.singleOwner?.length ? SHIELD('single-owner', String(fr.singleOwner.length), 'e0b341') : '',
-    (r.architecture || []).length ? SHIELD('architecture', `${r.architecture.length} facts`, '3ddc84') : '',
-    (r.commands || []).length ? SHIELD('commands', String(r.commands.length), '3ddc84') : '',
-    r.scanSeconds ? SHIELD('scan', `${r.scanSeconds}s`, '8a8f87') : '',
-    r.cloneMB != null ? SHIELD('clone', `${r.cloneMB} MB`, '8a8f87') : '',
-    SHIELD('forged by', 'llama-smith', '3ddc84'),
-    SHIELD('oracle', 'validated', '3ddc84'),
-    ageDays != null ? SHIELD('skill age', `${ageDays}d`, ageHex) : '',
-  ].filter(Boolean).join('')}</div>`
-}
 
 function barChart(rows, { unit = '' } = {}) {
   if (!rows.length) return ''
   const max = Math.max(...rows.map(r => r.value), 1)
-  const row = r => `<div class="bc-row${r.danger ? ' danger' : ''}">
-      <span class="bc-label" title="${esc(r.full || r.label)}">${esc(r.label)}</span>
-      <span class="bc-track"><i style="width:${Math.max(3, Math.round(r.value / max * 100))}%"></i></span>
-      <span class="bc-val">${r.value.toLocaleString()}${unit}${r.danger ? '<span class="bc-flag">solo</span>' : ''}</span>
+  const row = r => {
+    const fillClass = r.danger ? 'barchart-fill-danger' : 'barchart-fill'
+    return `<div class="barchart-row${r.danger ? ' danger' : ''}">
+      <span class="barchart-label" title="${esc(r.full || r.label)}">${esc(r.label)}</span>
+      <span class="barchart-track"><span class="${fillClass}" style="width:${Math.max(3, Math.round(r.value / max * 100))}%"></span></span>
+      <span class="barchart-value">${r.value.toLocaleString()}${unit}${r.danger ? ' ⚠️' : ''}</span>
     </div>`
+  }
   return `<div class="barchart" role="img" aria-label="bar chart">${rows.map(row).join('')}</div>`
 }
 
 const shortPath = f => f.split('/').slice(-2).join('/')
 
-function donut(segs, { centerNum, centerCap = '' } = {}) {
-  const live = segs.filter(s => s.value > 0)
-  const total = segs.reduce((s, x) => s + x.value, 0) || 1
-  const R = 42, SW = 13, C = 2 * Math.PI * R
-  const gap = live.length > 1 ? 5 : 0
-  let acc = 0
-  const arcs = live.map(s => {
-    const seg = C * s.value / total
-    const len = Math.max(0.5, seg - gap)
-    const arc = `<circle class="arc" cx="60" cy="60" r="${R}" fill="none" stroke="${s.color}" stroke-width="${SW}" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-(acc + gap / 2)).toFixed(2)}" transform="rotate(-90 60 60)"></circle>`
-    acc += seg
-    return arc
-  }).join('')
-  const legend = live.map(s => `<span class="dl"><span class="dd" style="background:${s.color}"></span><span class="dn">${esc(s.label)}</span><b style="color:${s.color}">${s.value.toLocaleString()}</b></span>`).join('')
-  return `<div class="donut"><div class="donut-disc"><svg viewBox="0 0 120 120" class="donut-svg" role="img" aria-label="${esc(live.map(s => `${s.label} ${s.value}`).join(', '))}">
-    <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--line)" stroke-width="${SW}"></circle>${arcs}
-  </svg><div class="donut-mid"><b>${centerNum ?? total}</b><span>${esc(centerCap)}</span></div></div><div class="donut-legend">${legend}</div></div>`
-}
-
-function busFactorBlock(fr) {
-  const band = ['CRITICAL', 'HIGH', 'MODERATE', 'GOOD']
-    .map(t => `<span class="bf-seg${t === fr.risk ? ' on ' + RISK_TIER[t] : ''}">${t}</span>`).join('')
-  const people = (fr.keyPeople || []).slice(0, 3).map(p => esc(p.name)).join(', ')
-  return `<div class="busfactor">
-    <div class="bf-head"><span class="bf-bus">${I.bus}</span><div class="bf-num">${fr.busFactor}<span class="bf-cap">bus factor</span></div></div>
-    <div class="bf-band">${band}</div>
-    ${people ? `<p class="bf-note">${people}${fr.keyPeople.length > 3 ? ' and others' : ''} hold most of the code.</p>` : ''}
-  </div>`
-}
 
 function archCoverage(architecture) {
   const counts = Object.keys(AREA_LABELS).map(area => ({ label: AREA_LABELS[area], value: (architecture || []).filter(a => a.area === area).length }))
@@ -360,144 +234,123 @@ function corpusCharts() {
   const allTop = {}
   for (const r of data) for (const c of (r.forensics?.topContributors || [])) { const key = c.login || c.name; if (!allTop[key]) allTop[key] = { name: c.name, commits: 0 }; allTop[key].commits += c.commits }
   const contribRows = Object.values(allTop).sort((a, b) => b.commits - a.commits).slice(0, 8).map(c => ({ label: c.name, value: c.commits }))
+  const GRADE_COLORS = { A: 'var(--green-brand)', B: 'var(--cyan)', C: 'var(--amber)', D: 'oklch(65% 0.2 45)', F: 'var(--red)' }
+  const gradeCounts = {}
+  for (const r of data) { const g = vibeScore(r).grade; gradeCounts[g] = (gradeCounts[g] || 0) + 1 }
+  const gradeSegs = ['A', 'B', 'C', 'D', 'F'].filter(g => gradeCounts[g]).map(g => ({ value: gradeCounts[g], color: GRADE_COLORS[g], label: `Grade ${g}` }))
+  const STACK_PALETTE = ['var(--green-brand)', 'var(--cyan)', 'var(--amber)', 'oklch(70% 0.16 305)', 'oklch(70% 0.16 350)', 'var(--red)', 'oklch(70% 0.12 230)']
+  const stackCounts = {}
+  for (const r of data) { const s = (repoStack(r).split('·')[0] || '?').trim() || '?'; stackCounts[s] = (stackCounts[s] || 0) + 1 }
+  const stackSegs = Object.entries(stackCounts).sort((a, b) => b[1] - a[1]).map(([s, n], i) => ({ value: n, color: STACK_PALETTE[i % STACK_PALETTE.length], label: s }))
   const charts = [
-    chart(I.scan, 'Findings by Smith', barChart(findingRows)),
-    chart(I.layers, 'Architecture facts per repo', barChart(archRows)),
-    busRows.length ? chart(I.bus, 'Bus factor by repo', barChart(busRows)) : '',
-    contribRows.length ? chart(I.users, 'Top contributors across corpus', barChart(contribRows)) : '',
+    chart(I.shield, 'Grade distribution', { body: donut(gradeSegs, { center: data.length, sub: 'repos' }) }),
+    chart(I.package, 'Stack distribution', { body: donut(stackSegs, { center: data.length, sub: 'repos' }) }),
+    chart(I.scan, 'Findings by Smith', { body: barChart(findingRows) }),
+    chart(I.layers, 'Architecture facts per repo', { body: barChart(archRows) }),
+    busRows.length ? chart(I.bus, 'Bus factor by repo', { body: barChart(busRows) }) : '',
+    contribRows.length ? chart(I.users, 'Top contributors across corpus', { body: barChart(contribRows) }) : '',
   ].filter(Boolean).join('')
   if (!charts) return ''
-  return `<div class="sec"><span class="chip">${I.zap} Corpus scan</span><h2>Signals across ${data.length} repos</h2><p class="sub">Aggregate facts from every scan — findings by Smith, how much architecture each map captured, and where knowledge concentrates.</p></div><div class="charts">${charts}</div>`
+  return `<section class="section">
+    <div class="section-header">
+      <span class="section-title">Corpus Scan</span>
+      <h2 class="display" style="margin-top:0.5rem">Readings across ${data.length} repos</h2>
+      <p class="body" style="margin-top:0.75rem;max-width:50ch">Aggregate facts from every scan — findings by Smith, how much architecture each map captured, and where knowledge concentrates.</p>
+    </div>
+    <div class="grid charts">${charts}</div>
+  </section>`
 }
 
-function glitchFeed() {
-  const all = data.flatMap(r => (r.opsFindings || []).map(f => ({ f, r })))
-    .sort((a, b) => (SEVRANK[a.f.severity] ?? 1) - (SEVRANK[b.f.severity] ?? 1))
-  return all.slice(0, 6).map((x, i) => {
-    const full = repoFull(x.r), ico = I[SMITH_ICON[x.f.smith]] || I.zap
-    return `<a class="glitch sev-${esc(x.f.severity)}" href="${safeName(x.r.repo)}.html">
-      <span class="gi">${ico}<span class="idx">${String(i + 1).padStart(2, '0')}</span></span>
-      <span><span class="hook">${esc(x.f.text)}</span>
-        <span class="cite">${stamp(SMITH_STAMP[x.f.smith] || 'SMITH')}<span class="repo">${esc(full)}</span>${x.f.file ? `<span class="path">${esc(x.f.file)}</span>` : ''}</span>
-        <span class="arrow">open ${esc(x.r.repo)} report ${I.arrow}</span></span>
-      <span class="badge ${esc(x.f.severity)}">${I[x.f.severity] || ''}${esc(x.f.severity)}</span></a>`
-  }).join('')
-}
-
-const TYPES = [
-  { ic: 'eye', stamp: 'ARCHITECT-SMITH', name: 'Project architecture', desc: 'What the app is, its modules, data flow, data model, and entrypoints — the matrix of the codebase. Every claim validated against a real file.' },
-  { ic: 'package', stamp: 'STACK-MAP', name: 'Stack & commands', desc: 'The real stack, entrypoints, and the build/test/deploy commands an agent should run — parsed from manifests and CI, never invented.' },
-  { ic: 'shield', stamp: 'BOUNDARIES', name: 'Do-not-touch', desc: 'Lockfiles, generated output, and env files an agent must not hand-edit — with the reason it must not.' },
-  { ic: 'rocket', stamp: 'OPS-SMITHS', name: 'Operational risk', desc: 'Deploy traps, secret leaks, and cron ghosts. The ops layer hanging off the architecture, not the headline.' },
-  { ic: 'bug', stamp: 'FRAGILITY', name: 'Fragile hotspots', desc: 'Code that churns hard over the last year. Where bugs live. Docs and lockfiles excluded.' },
-  { ic: 'eye', stamp: 'ORACLE', name: 'Two oracles', desc: 'The Validation Oracle re-reads each claim against its file — hallucinations die here. The Self-Improvement Oracle keeps the skill\'s memory.' },
-]
-const STEPS = [
-  { n: '1', label: 'Scan repo', desc: 'Smith swarm reads every file' },
-  { n: '2', label: 'Extract facts', desc: 'Architecture, risks, commands' },
-  { n: '3', label: 'Oracle validates', desc: 'Claims checked against files' },
-  { n: '4', label: 'Skill forged', desc: 'Claude-ready project memory' },
-]
 
 function card(r) {
   const full = repoFull(r), [org, name] = full.includes('/') ? full.split('/') : ['', full]
   const st = statusOf(r)
+  const grade = vibeScore(r)
+  const gradeClass = `badge-grade-${grade.grade.toLowerCase()}`
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low'), tot = Math.max(h + m + l, 1)
-  const bar = (c, n) => n ? `<i class="${c}" style="width:${Math.round(n / tot * 100)}%"></i>` : ''
-  const top = (r.opsFindings || []).find(f => f.file)
-  const meta = [repoStars(r) != null ? `<span><b>${repoStars(r)}</b>★</span>` : '', `<span><b>${(r.commits || 0).toLocaleString()}</b> commits</span>`, `<span><b>${r.scanSeconds || 0}</b>s</span>`].filter(Boolean).join('')
-  const sev = (h + m + l) ? `<div class="sevbar"><div class="track">${bar('h', h)}${bar('m', m)}${bar('l', l)}</div>
-      <div class="legend"><span class="h"><span class="d"></span><b>${h}</b> high</span><span class="m"><span class="d"></span><b>${m}</b> med</span><span class="l"><span class="d"></span><b>${l}</b> low</span></div></div>`
-    : `<div class="sevbar"><div class="legend"><span>${st === 'failed' ? 'scan failed' : 'no findings — clean'}</span></div></div>`
-  return `<a class="card ${st === 'failed' ? 'glitchfail' : ''}" href="${safeName(r.repo)}.html">
-    <div class="head">${avatarImg(full)}<span class="cn"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</span>${vibeBadge(r)}</div>
-    <div class="meta"><span class="pill stack">${esc(repoStack(r))}</span><span class="pill status ${st}">${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</span>${meta}</div>
-    <p class="blurb">${esc(repoBlurb(r))}</p>
-    ${sev}
-    ${top ? `<div class="reveal-line">validated against ${esc(top.file)}</div>` : ''}
-    <span class="go">open report ${I.arrow}</span></a>`
+  const hPct = tot ? Math.round((h / tot) * 100) : 0
+  const mPct = tot ? Math.round((m / tot) * 100) : 0
+  const lPct = tot ? Math.round((l / tot) * 100) : 0
+
+  const sev = (h + m + l) ? `
+    <div class="sevbar" style="margin:1rem 0">
+      <div class="sevbar-track">
+        ${h ? `<span class="sevbar-seg sevbar-seg-high" style="width:${hPct}%"></span>` : ''}
+        ${m ? `<span class="sevbar-seg sevbar-seg-medium" style="width:${mPct}%"></span>` : ''}
+        ${l ? `<span class="sevbar-seg sevbar-seg-low" style="width:${lPct}%"></span>` : ''}
+      </div>
+      <div class="sevbar-legend">
+        ${h ? `<span class="sevbar-item"><span class="sevbar-dot sevbar-dot-high"></span>High <b>${h}</b></span>` : ''}
+        ${m ? `<span class="sevbar-item"><span class="sevbar-dot sevbar-dot-medium"></span>Med <b>${m}</b></span>` : ''}
+        ${l ? `<span class="sevbar-item"><span class="sevbar-dot sevbar-dot-low"></span>Low <b>${l}</b></span>` : ''}
+      </div>
+    </div>`
+    : `<div style="margin:1rem 0;font-size:0.85rem;color:var(--text-muted)">No findings — clean scan</div>`
+
+  return `<div class="panel panel-interactive" data-report-card style="position:relative;display:flex;flex-direction:column">
+    <a href="${safeName(r.repo)}.html" aria-label="Open ${esc(full)} report" style="position:absolute;inset:0;z-index:1;border-radius:inherit"></a>
+    <button class="delete-report card-delete" data-repo="${esc(r.repo)}" title="Delete report" aria-label="Delete ${esc(full)} report">${TRASH_SVG}</button>
+    <div style="position:relative;z-index:0;display:flex;flex-direction:column;flex:1;color:inherit">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:0.75rem">
+        <div style="display:flex;align-items:center;gap:0.75rem;min-width:0">
+          ${avatarImg(full)}
+          <div style="min-width:0">
+            <div style="font-size:1.15rem;font-weight:700;color:var(--green-hot);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${esc(org)}<span style="color:var(--text-muted)">/</span>${esc(name)}
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.15rem">
+              ${esc(repoStack(r))}${r.commits ? ` · ${r.commits.toLocaleString()} commits` : ''}
+            </div>
+          </div>
+        </div>
+        <span class="badge badge-grade ${gradeClass}">${grade.score} ${grade.grade}</span>
+      </div>
+      <div style="font-size:0.9rem;color:var(--text-secondary);line-height:1.55;margin:0.75rem 0">
+        ${esc(repoBlurb(r))}
+      </div>
+      ${sev}
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-top:auto;padding-top:1rem;font-size:0.8rem;color:var(--green-brand)">
+        Open report →
+      </div>
+    </div>
+  </div>`
 }
 
 function indexPage() {
-  const all = data.flatMap(r => r.opsFindings || [])
-  const S = {
-    repos: data.length, findings: all.length,
-    high: all.filter(f => f.severity === 'high').length,
-    forged: data.filter(r => (r.skills || []).length || r.skillForged).length,
-    commits: data.reduce((n, r) => n + (r.commits || 0), 0),
-    arch: data.reduce((n, r) => n + (r.architecture || []).length, 0),
-  }
   const famous = data.filter(r => r.group !== 'wild' && r.group !== 'boring')
   const wild = data.filter(r => r.group === 'wild' || r.group === 'boring')
-  const heroArt = HAS_HERO
-    ? `<div class="badge-card"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl2"></span><span class="corner br"></span><img class="hero-img" src="${HERO_DATA}" width="620" height="620" alt="llama-smith — a Matrix Agent Smith llama emblem"></div>`
-    : `<div class="badge-card" style="padding:2rem 3rem"><span class="bt" style="font-size:2rem;color:var(--green-hot)">llama·smith</span></div>`
-  const busTotal = data.reduce((n, r) => n + (r.forensics?.busFactor || 0), 0)
+
   const body = `${brandbar()}
-  <header class="hero">
-    <div class="hero-main">
-      ${heroArt}
-      <div class="hero-copy">
-        <h1 class="slogan">Many Smiths enter.<br>One skill comes out.</h1>
-        <p class="tagline">A README tells you what the code is supposed to do. This remembers what it actually does — and where it breaks.</p>
-        <p class="lede">Point llama-smith at any repo. A swarm of Ollama models maps how it's built — <span class="hot">architecture, modules, data flow</span> — and where it deploys, leaks, and breaks, then forges a project skill validated by the Oracle.</p>
-        <div class="taglines"><span>Maps the real repo, not the README</span><span>Every claim cites a file path</span><span>Runs on Ollama, local or cloud</span><span>The Oracle rejects hallucinated skills</span></div>
-      </div>
-    </div>
-  </header>
-  <div class="steps">${STEPS.map(s => `<div class="step"><span class="step-n">${s.n}</span><span class="step-l">${esc(s.label)}</span><span class="step-d">${esc(s.desc)}</span></div>`).join('')}</div>
-  <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>Scanned under real conditions</h2><p class="sub">Repos the Smith swarm mapped, with repo grade, forensic charts, and the forged skill.</p></div>
-  <div class="grid">${famous.map(card).join('')}</div>
-  ${wild.length ? `<div class="sec"><span class="chip">${I.eye} In the wild</span><h2>Random low-star repos</h2><p class="sub">Does it stay honest when there's little to find?</p></div><div class="grid">${wild.map(card).join('')}</div>` : ''}
-  ${corpusCharts()}
-  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
-  <div class="matrix">
-    <div class="matrix-layer arch">
-      <div class="layer-label">${I.layers} Architecture Layer</div>
-      <div class="matrix-cells">
-        <div class="mcell"><div class="mth">${I.eye}<div class="mname">Project architecture</div></div>${stamp('ARCHITECT-SMITH')}<p>What the app is, its modules, data flow, data model, and entrypoints.</p></div>
-        <div class="mcell"><div class="mth">${I.package}<div class="mname">Stack & commands</div></div>${stamp('STACK-MAP')}<p>The real stack, entrypoints, and the build/test/deploy commands.</p></div>
-        <div class="mcell"><div class="mth">${I.shield}<div class="mname">Do-not-touch</div></div>${stamp('BOUNDARIES')}<p>Lockfiles, generated output, and env files an agent must not hand-edit.</p></div>
-      </div>
-    </div>
-    <div class="matrix-connector"><span>_ops layer hangs off architecture_</span></div>
-    <div class="matrix-layer ops">
-      <div class="layer-label">${I.zap} Operational Layer</div>
-      <div class="matrix-cells">
-        <div class="mcell"><div class="mth">${I.rocket}<div class="mname">Operational risk</div></div>${stamp('OPS-SMITHS')}<p>Deploy traps, secret leaks, and cron ghosts.</p></div>
-        <div class="mcell"><div class="mth">${I.bug}<div class="mname">Fragile hotspots</div></div>${stamp('FRAGILITY')}<p>Code that churns hard over the last year. Where bugs live.</p></div>
-      </div>
-    </div>
-    <div class="matrix-oracles">
-      <div class="oracle validate">
-        <div class="oth">${I.eye}<div class="oname">Validation Oracle</div></div>
-        <p>Re-reads each claim against its file — hallucinations die here.</p>
-      </div>
-      <div class="oracle learn">
-        <div class="oth">${I.layers}<div class="oname">Self-Improvement Oracle</div></div>
-        <p>Keeps the skill's memory. Learns from every scan.</p>
-      </div>
-    </div>
+${heroSection()}
+<section class="section">
+  <div class="section-header">
+    <span class="section-title">Scanned Repositories</span>
+    <h2 class="display" style="margin-top:0.5rem">${famous.length + wild.length} Repos Analyzed</h2>
   </div>
-  <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>Scan evidence — ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
-  <div class="glitches">${glitchFeed()}</div>
-  <section class="stats">
-    <div class="stat">${I.repo}<div class="n">${S.repos}</div><div class="l">repos mapped</div></div>
-    <div class="stat hi">${I.eye}<div class="n">${S.arch}</div><div class="l">architecture facts</div></div>
-    <div class="stat">${I.scan}<div class="n">${S.findings}</div><div class="l">operational findings</div></div>
-    <div class="stat">${I.high}<div class="n">${S.high}</div><div class="l">critical risks</div></div>
-    <div class="stat">${I.bus}<div class="n">${busTotal}</div><div class="l">knowledge bus factor</div></div>
-    <div class="stat">${I.file}<div class="n">${S.forged}</div><div class="l">skills forged</div></div>
-    <div class="stat">${I.branch}<div class="n">${S.commits.toLocaleString()}</div><div class="l">commits read</div></div>
-  </section>
-  ${siteFooter()}`
-  return shell('llama-smith · the construct', body)  // shell already includes RAIN
+  <div class="grid">${famous.map(card).join('')}</div>
+  ${wild.length ? `
+  <div class="section-header" style="margin-top:3rem">
+    <span class="section-title">In the Wild</span>
+    <h2 class="display" style="margin-top:0.5rem">Random Low-Star Repos</h2>
+    <p class="body" style="margin-top:0.5rem">Does it stay honest when there's little to find?</p>
+  </div>
+  <div class="grid">${wild.map(card).join('')}</div>` : ''}
+</section>
+${corpusCharts()}
+${siteFooter()}`
+  return shell('llama-smith · the construct', body)
 }
 
 function skillPanel(r) {
   const ops = r.opsFindings || [], hot = r.newCodeHotspots || []
   if (!ops.length && !hot.length && !(r.architecture || []).length && !(r.commands || []).length) {
-    return `<div class="skill"><div class="bar">${I.file} skill ${stamp('NOT FORGED')}</div><pre class="empty">Nothing to forge — the swarm found no operational risk and no churn worth recording. Skip, don't stub.</pre></div>`
+    return `<div class="panel">
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem">
+        ${I.file}
+        <span class="badge badge-grade badge-grade-f">NOT FORGED</span>
+      </div>
+      <p style="font-size:0.9rem;color:var(--text-muted)">Nothing to forge — the swarm found no operational risk and no churn worth recording. Skip, don't stub.</p>
+    </div>`
   }
   const built = buildSkillFiles(
     { repo: r.repo, fullName: repoFull(r), opsFindings: ops, newCodeHotspots: hot },
@@ -507,38 +360,290 @@ function skillPanel(r) {
     }
   )
   const lines = f => (f.body.match(/\n/g) || []).length + 1
-  const tree = built.files.map((f, i) => `<li data-fi="${i}"><span class="tf">${esc(f.path)}</span><span class="tl">${lines(f)}L</span></li>`).join('')
-  const files = built.files.map((f, i) => `<details class="sf"${i === 0 ? ' open' : ''}><summary>${I.file}<span class="sfp">${esc(f.path)}</span><span class="sfl">${lines(f)} lines</span></summary><pre class="md-raw">${esc(f.body)}</pre><div class="md-rich">${mdToHtml(f.body)}</div></details>`).join('')
-  return `<div class="skillfolder rich">
-    <p class="explain">A Claude Code skill is a <b>folder</b>, not a file. <code>${esc(built.name)}/SKILL.md</code> is what Claude reads first, and it points straight at <code>references/architecture.md</code> — the project's map: what it is, its modules, data flow, and entrypoints. The other <code>references/</code> files cover real commands, do-not-touch boundaries, and operational risk; <code>memory.md</code> is the Self-Improvement Oracle's long-term memory. Every claim cites a file or says <b>unknown</b>.</p>
-    <div class="tree"><div class="treehd">${I.repo}<b>${esc(built.name)}/</b>${stamp(built.files.length + ' FILES · FORGED')}<button type="button" class="md-toggle" aria-pressed="true">${I.file} raw markdown</button></div><ul>${tree}</ul></div>
-    ${files}</div>`
+
+  const fileDesc = {
+    'CLAUDE.md': 'Primary skill instructions for Claude Code',
+    'AGENTS.md': 'Agent behavior and orchestration rules',
+    'project-memory.md': 'Self-learning memory anchor',
+    'memory.md': 'Self-learning memory — grows as you correct it',
+    'architecture.md': 'Project structure and module map',
+    'operations.md': 'Deploy, secrets, and runtime risks',
+    'risks.md': 'Known vulnerabilities and fragile hotspots',
+    'SKILL.md': 'Entry point with file references',
+  }
+
+  const fileCards = built.files.map((f) => {
+    const lineCount = lines(f)
+    const fileName = f.path.split('/').pop()
+    const desc = fileDesc[fileName] || 'Generated skill component'
+    const previewId = `preview-${esc(fileName.replace(/\./g, '-'))}`
+
+    return `
+    <div style="padding:0.875rem;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--line-subtle);cursor:pointer;transition:all 0.15s"
+         onmouseover="this.style.borderColor='var(--green-brand)';this.style.background='var(--bg-elevated)'"
+         onmouseout="this.style.borderColor='var(--line-subtle)';this.style.background='var(--bg)'"
+         onclick="document.getElementById('${previewId}').style.display=document.getElementById('${previewId}').style.display==='none'?'block':'none'">
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--green-brand);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.path)}</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap">${lineCount} lines</span>
+        <span class="badge badge-grade badge-grade-a" style="font-size:0.65rem;padding:0.15rem 0.4rem">forged</span>
+      </div>
+      <p style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-secondary);line-height:1.4">${esc(desc)}</p>
+
+      <div id="${previewId}" style="display:none;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--line-subtle)">
+        <pre style="font-size:0.75rem;line-height:1.6;color:var(--text-secondary);background:var(--surface);padding:0.75rem;border-radius:var(--r-xs);max-height:60vh;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0"><code>${esc(f.body)}</code></pre>
+      </div>
+    </div>`
+  }).join('')
+
+  const totalLines = built.files.reduce((sum, f) => sum + lines(f), 0)
+  const repoName = repoFull(r)
+
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.25rem">
+    <div class="panel" style="padding:1.25rem;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+        <span style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--green-brand)">${I.repo}</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Artifact Summary</span>
+      </div>
+
+      <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary);font-family:var(--font-mono);margin-bottom:0.25rem">${esc(built.name)}/</div>
+
+      <div style="display:flex;gap:0.75rem;margin:1rem 0">
+        <div style="text-align:center;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm);flex:1">
+          <div style="font-size:1.25rem;font-weight:700;color:var(--green-brand);font-family:var(--font-mono)">${built.files.length}</div>
+          <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Files</div>
+        </div>
+        <div style="text-align:center;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm);flex:1">
+          <div style="font-size:1.25rem;font-weight:700;color:var(--cyan);font-family:var(--font-mono)">${totalLines.toLocaleString()}</div>
+          <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Lines</div>
+        </div>
+      </div>
+
+      <div style="margin-top:auto">
+        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm);margin-bottom:0.5rem">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--green-brand);flex-shrink:0"></span>
+          <span style="font-size:0.8rem;color:var(--text-secondary)"><b style="color:var(--text-primary);font-weight:600">Oracle validated</b> — every claim checked against its file</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm)">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></span>
+          <span style="font-size:0.8rem;color:var(--text-secondary)"><b style="color:var(--text-primary);font-weight:600">Self-learning memory</b> — folds in your corrections each run</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.5rem;margin-top:1rem">
+        <button class="btn btn-primary copy-skill" style="flex:1;font-size:0.8rem" data-skill="${esc(built.name)}">Copy skill name</button>
+        <a class="btn btn-secondary" style="flex:1;font-size:0.8rem;text-align:center" href="https://github.com/${esc(repoName)}" target="_blank" rel="noopener">View repo</a>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:1.25rem">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
+        <span style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--cyan)">${I.file}</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Generated Files</span>
+        <span style="margin-left:auto;font-size:0.75rem;color:var(--text-muted)">Click to preview</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:0.625rem">${fileCards}</div>
+    </div>
+  </div>`
+}
+
+function donut(segments, { center, sub } = {}) {
+  const sum = segments.reduce((s, x) => s + x.value, 0) || 1
+  let acc = 0
+  const stops = segments.map(s => {
+    const from = (acc / sum) * 100
+    acc += s.value
+    return `${s.color} ${from}% ${(acc / sum) * 100}%`
+  }).join(', ')
+  const legend = segments.filter(s => s.value > 0).map(s =>
+    `<span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--text-secondary)"><span style="width:8px;height:8px;border-radius:2px;background:${s.color};flex-shrink:0"></span>${esc(s.label)} <b style="color:var(--text-primary)">${s.value}</b></span>`
+  ).join('')
+  return `<div style="display:flex;align-items:center;gap:1rem;margin-top:0.75rem">
+    <div style="position:relative;width:88px;height:88px;flex-shrink:0;border-radius:50%;background:conic-gradient(${stops})" role="img" aria-label="donut chart">
+      <div style="position:absolute;inset:14px;border-radius:50%;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1">
+        <span style="font-size:1.1rem;font-weight:800;font-family:var(--font-mono);color:var(--text-primary)">${center != null ? center : sum}</span>
+        ${sub ? `<span style="font-size:0.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-top:2px">${esc(sub)}</span>` : ''}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.4rem">${legend}</div>
+  </div>`
 }
 
 function repoSignals(r, h, m, l, fr) {
   const hot = r.newCodeHotspots || []
   const soSet = new Set((fr?.singleOwner || []).map(s => s.file))
-  const hotRows = hot.slice(0, 6).map(x => ({ label: shortPath(x.file), full: x.file, value: x.edits, danger: soSet.has(x.file) }))
+  const totFindings = h + m + l
+  const so = fr?.singleOwner?.length || 0
+  const codeN = fr?.codeFiles || 0
+
+  const cards = []
+
+  if (totFindings > 0) {
+    const severityBar = donut([
+      { value: h, color: 'var(--red)', label: 'High' },
+      { value: m, color: 'var(--amber)', label: 'Medium' },
+      { value: l, color: 'var(--green-brand)', label: 'Low' },
+    ], { center: totFindings, sub: 'findings' })
+
+    const explanation = h > 0 ? `${h} high-priority issues need review.` : totFindings > 0 ? `${totFindings} findings, none critical.` : 'No findings detected.'
+
+    cards.push(chart(I.high, 'Findings by Severity', {
+      bigNumber: `${totFindings}`,
+      subtitle: 'total findings',
+      explanation,
+      body: severityBar
+    }))
+  }
+
+  if (codeN > 0) {
+    const sharedFiles = Math.max(0, codeN - so)
+    const riskText = so > 10 ? `${so} files concentrate ownership risk.` : so > 0 ? 'Low ownership concentration.' : 'Ownership well distributed.'
+
+    const splitBar = donut([
+      { value: so, color: 'var(--amber)', label: 'Single-owner' },
+      { value: sharedFiles, color: 'var(--green-brand)', label: 'Shared' },
+    ], { center: codeN, sub: 'files' })
+
+    cards.push(chart(I.users, 'Ownership Split', {
+      bigNumber: `${codeN}`,
+      subtitle: 'code files',
+      explanation: riskText,
+      body: splitBar
+    }))
+  }
+
+  const archRows = archCoverage(r.architecture)
+  if (archRows.length > 0) {
+    const totalArch = archRows.reduce((sum, a) => sum + a.value, 0)
+    const maxArch = Math.max(...archRows.map(x => x.value))
+    const archBars = archRows.slice(0, 5).map(a => {
+      const pct = Math.round((a.value / maxArch) * 100)
+      return `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
+        <span style="width:90px;font-size:0.8rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.label)}</span>
+        <span style="flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden">
+          <span style="display:block;width:${pct}%;height:100%;background:var(--cyan);border-radius:3px"></span>
+        </span>
+        <span style="width:30px;text-align:right;font-size:0.8rem;color:var(--text-secondary)">${a.value}</span>
+      </div>`
+    }).join('')
+
+    cards.push(chart(I.layers, 'Architecture Coverage', {
+      bigNumber: `${totalArch}`,
+      subtitle: 'facts captured',
+      explanation: 'Map of modules, data flow, and entrypoints.',
+      body: `<div style="margin-top:0.75rem">${archBars}</div>`
+    }))
+  }
+
+  if (fr && 'busFactor' in fr) {
+    const riskColor = { CRITICAL: 'var(--red)', HIGH: 'var(--amber)', MODERATE: 'var(--amber)', GOOD: 'var(--green-brand)' }
+    const color = riskColor[fr.risk] || 'var(--text-muted)'
+
+    const riskBar = `<div style="margin-top:0.75rem">
+      <div style="display:flex;gap:0.375rem;justify-content:center">
+        ${['CRITICAL', 'HIGH', 'MODERATE', 'GOOD'].map(t => `
+          <span style="padding:0.2rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:500;background:${t === fr.risk ? color : 'var(--surface)'};color:${t === fr.risk ? 'var(--bg)' : 'var(--text-muted)'}">${t}</span>
+        `).join('')}
+      </div>
+      ${fr.keyPeople?.length ? `<p style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-muted);text-align:center">${fr.keyPeople.slice(0, 2).map(p => esc(p.name)).join(', ')}${fr.keyPeople.length > 2 ? ' and others' : ''} hold most code</p>` : ''}
+    </div>`
+
+    const explanation = fr.risk === 'CRITICAL' ? 'Critical knowledge concentration.' : fr.risk === 'GOOD' ? 'Knowledge well distributed.' : 'Elevated knowledge risk.'
+
+    cards.push(chart(I.bus, 'Ownership Risk', {
+      bigNumber: `${fr.busFactor}`,
+      subtitle: 'bus factor',
+      explanation,
+      body: riskBar
+    }))
+  }
+
+  if (hot.length > 0) {
+    const maxEdits = Math.max(...hot.map(h => h.edits))
+    const hotBars = hot.slice(0, 5).map(x => {
+      const pct = Math.round((x.edits / maxEdits) * 100)
+      const isRisky = soSet.has(x.file)
+      return `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
+        <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(x.file)}">${esc(shortPath(x.file))}</span>
+        <span style="width:60px;height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden">
+          <span style="display:block;width:${pct}%;height:100%;background:${isRisky ? 'var(--red)' : 'var(--amber)'};border-radius:3px"></span>
+        </span>
+        <span style="width:35px;text-align:right;font-size:0.75rem;color:${isRisky ? 'var(--red)' : 'var(--text-muted)'}">${x.edits}${isRisky ? ' ⚠' : ''}</span>
+      </div>`
+    }).join('')
+
+    cards.push(chart(I.bug, 'Fragile Hotspots', {
+      bigNumber: `${hot.length}`,
+      subtitle: 'hot files',
+      explanation: 'Files with high churn over last year.',
+      body: `<div style="margin-top:0.75rem">${hotBars}</div>`
+    }))
+  }
+
   const moduleRows = (fr?.modules || []).map(mo => ({ label: mo.module + '/', value: Math.round(mo.share * 100), danger: mo.share >= 0.8 }))
+  if (moduleRows.length > 0) {
+    const modBars = moduleRows.slice(0, 5).map(m => `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
+      <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.label)}</span>
+      <span style="width:50px;height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden">
+        <span style="display:block;width:${m.value}%;height:100%;background:${m.danger ? 'var(--red)' : 'var(--green-brand)'};border-radius:3px"></span>
+      </span>
+      <span style="width:30px;text-align:right;font-size:0.75rem;color:${m.danger ? 'var(--red)' : 'var(--text-muted)'}">${m.value}%</span>
+    </div>`).join('')
+
+    const highConcentration = moduleRows.filter(m => m.danger).length
+    const explanation = highConcentration > 0 ? `${highConcentration} modules with >80% ownership concentration.` : 'Module ownership well distributed.'
+
+    cards.push(chart(I.users, 'Module Ownership', {
+      bigNumber: `${moduleRows.length}`,
+      subtitle: 'modules',
+      explanation,
+      body: `<div style="margin-top:0.75rem">${modBars}</div>`
+    }))
+  }
+
+  const contribRows = (fr?.topContributors || []).map(t => ({ label: t.name, value: t.commits, login: t.login }))
+  if (contribRows.length > 0) {
+    const maxCommits = Math.max(...contribRows.map(c => c.value))
+    const contribBars = contribRows.slice(0, 5).map(c => `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
+      ${c.login ? `<img src="https://github.com/${esc(c.login)}.png?size=32" width="20" height="20" style="border-radius:50%;flex-shrink:0" loading="lazy" alt="${esc(c.label)}" />` : `<span style="width:20px;height:20px;border-radius:50%;background:var(--surface-2);flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;color:var(--text-muted)">${esc((c.label || '').slice(0, 2).toUpperCase())}</span>`}
+      <span style="flex:1;font-size:0.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.label)}</span>
+      <span style="width:50px;height:4px;background:var(--surface-2);border-radius:2px;overflow:hidden">
+        <span style="display:block;width:${Math.round((c.value / maxCommits) * 100)}%;height:100%;background:var(--cyan);border-radius:2px"></span>
+      </span>
+      <span style="width:40px;text-align:right;font-size:0.75rem;color:var(--text-muted)">${c.value.toLocaleString()}</span>
+    </div>`).join('')
+
+    const totalContribs = contribRows.reduce((sum, c) => sum + c.value, 0)
+
+    cards.push(chart(I.users, 'Top Contributors', {
+      bigNumber: `${fr.contributors || contribRows.length}`,
+      subtitle: 'contributors',
+      explanation: `${totalContribs.toLocaleString()} commits from top ${contribRows.length}.`,
+      body: `<div style="margin-top:0.75rem">${contribBars}</div>`
+    }))
+  }
+
   const couplingRows = (fr?.coupling || []).map(c => ({ label: `${shortPath(c.a)} ↔ ${shortPath(c.b)}`, full: `${c.a} ↔ ${c.b}`, value: c.count }))
-  const contribRows = (fr?.topContributors || []).map(t => ({ label: t.name, value: t.commits }))
-  const sevDonut = (h + m + l) ? donut([
-    { label: 'High', value: h, color: 'var(--high)' }, { label: 'Medium', value: m, color: 'var(--medium)' }, { label: 'Low', value: l, color: 'var(--low)' },
-  ], { centerCap: 'findings' }) : ''
-  const so = fr?.singleOwner?.length || 0, codeN = fr?.codeFiles || 0
-  const ownDonut = codeN ? donut([
-    { label: 'Single-owner', value: so, color: 'var(--high)' }, { label: 'Shared', value: Math.max(0, codeN - so), color: 'var(--low)' },
-  ], { centerNum: codeN, centerCap: 'code files' }) : ''
-  return [
-    sevDonut ? chart(I.high, 'Findings by severity', sevDonut) : '',
-    ownDonut ? chart(I.users, 'Ownership split', ownDonut) : '',
-    chart(I.layers, 'Architecture coverage', barChart(archCoverage(r.architecture))),
-    fr && 'busFactor' in fr ? chart(I.bus, 'Knowledge risk', busFactorBlock(fr)) : '',
-    hot.length ? chart(I.bug, 'Fragile hotspots', barChart(hotRows)) : '',
-    moduleRows.length ? chart(I.users, 'Module ownership', barChart(moduleRows, { unit: '%' })) : '',
-    contribRows.length ? chart(I.users, 'Top contributors', barChart(contribRows)) : '',
-    couplingRows.length ? chart(I.branch, 'Change coupling', barChart(couplingRows)) : '',
-  ].filter(Boolean).join('')
+  if (couplingRows.length > 0) {
+    const maxCount = Math.max(...couplingRows.map(c => c.value))
+    const couplingBars = couplingRows.slice(0, 5).map(c => `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.375rem">
+      <span style="flex:1;font-size:0.75rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(c.full)}">${esc(c.label)}</span>
+      <span style="width:40px;height:4px;background:var(--surface-2);border-radius:2px;overflow:hidden">
+        <span style="display:block;width:${Math.round((c.value / maxCount) * 100)}%;height:100%;background:var(--amber);border-radius:2px"></span>
+      </span>
+      <span style="width:25px;text-align:right;font-size:0.75rem;color:var(--text-muted)">${c.value}</span>
+    </div>`).join('')
+
+    cards.push(chart(I.branch, 'Change Coupling', {
+      bigNumber: `${couplingRows.length}`,
+      subtitle: 'coupled pairs',
+      explanation: 'Files that change together frequently.',
+      body: `<div style="margin-top:0.75rem">${couplingBars}</div>`
+    }))
+  }
+
+  return cards.join('')
 }
 
 function repoPage(r) {
@@ -547,37 +652,96 @@ function repoPage(r) {
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
   const fr = r.forensics
   const signals = repoSignals(r, h, m, l, fr)
-  const msec = (ico, label, val) => `<span class="m">${I[ico] || ''}${label} <b>${esc(val)}</b></span>`
-  const cmd = rescanCommand(r)
+  const archFacts = archCoverage(r.architecture).reduce((s, a) => s + a.value, 0)
+  const hotN = (r.newCodeHotspots || []).length
+  const soN = fr?.singleOwner?.length || 0
+  const evPills = [
+    (h + m + l) ? `<span class="ev-pill"><b style="color:var(--red)">${h}</b> high · <b style="color:var(--amber)">${m}</b> med · <b style="color:var(--green-brand)">${l}</b> low</span>` : '',
+    fr && 'busFactor' in fr ? `<span class="ev-pill">bus factor <b>${fr.busFactor}</b></span>` : '',
+    fr?.codeFiles ? `<span class="ev-pill"><b>${fr.codeFiles}</b> files${soN ? ` · <b>${soN}</b> single-owner` : ''}</span>` : '',
+    archFacts ? `<span class="ev-pill"><b>${archFacts}</b> architecture facts</span>` : '',
+    hotN ? `<span class="ev-pill"><b>${hotN}</b> hot files</span>` : '',
+  ].filter(Boolean).join('')
+
+  const grade = vibeScore(r)
+  const gradeClass = `badge-grade-${grade.grade.toLowerCase()}`
+  const gradeColor = grade.grade === 'A' ? 'var(--green-brand)' : (grade.grade === 'D' || grade.grade === 'F') ? 'var(--red)' : 'var(--amber)'
+
+  const allTech = r.tech || []
+  const visibleTech = allTech.slice(0, 4)
+  const hiddenTech = allTech.slice(4)
+  const techBadgesLimited = visibleTech.map(TECH_BADGE).join('')
+    + (hiddenTech.length ? `<span class="tech-hidden" style="display:none">${hiddenTech.map(TECH_BADGE).join('')}</span><button type="button" class="tech-more" style="padding:0.2rem 0.5rem;background:var(--surface);border:1px solid var(--line);border-radius:4px;font-size:0.75rem;color:var(--text-muted);cursor:pointer">+${hiddenTech.length} more</button>` : '')
+
   const body = `${brandbar()}
-  <header class="repo">
-    <div class="repo-actions"><a class="back" href="index.html">${I.arrow} all scanned sites</a>${rescanBtn(cmd)}</div>
-    <div class="repotop">
-      <div class="repohead">${avatarImg(full, 'lg')}<div class="rh-text"><div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div><p class="repoblurb">${esc(repoBlurb(r))}</p></div></div>
-      ${vibeGauge(r)}
+<section class="section" style="padding-top:1rem">
+  <div style="margin-bottom:1.25rem">
+    <a class="btn btn-ghost" href="index.html" style="font-size:0.85rem">← All Repositories</a>
+  </div>
+
+  <div class="panel" style="padding:1.5rem">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem;flex-wrap:wrap">
+      <div style="display:flex;align-items:flex-start;gap:1rem;min-width:0;flex:1">
+        ${avatarImg(full)}
+        <div style="min-width:0">
+          <div style="display:flex;align-items:center;gap:0.625rem;flex-wrap:wrap">
+            <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary);letter-spacing:-0.02em;font-family:var(--font-display)">
+              ${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}
+            </div>
+            <div class="score-ring" style="border-color:${gradeColor}" title="Risk grade ${grade.grade} — score ${grade.score}/100 from validated risk, ownership, and coverage" aria-label="Risk grade ${grade.grade}, score ${grade.score} of 100">
+              <span class="score-ring-num">${grade.score}</span>
+              <span class="score-ring-grade" style="color:${gradeColor}">${grade.grade}</span>
+            </div>
+          </div>
+          <p style="margin-top:0.375rem;font-size:0.9rem;color:var(--text-secondary);line-height:1.5">${esc(repoBlurb(r))}</p>
+          ${allTech.length ? `<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.75rem;align-items:center">${techBadgesLimited}</div>` : ''}
+        </div>
+      </div>
     </div>
-    ${techBadges(r)}
-    <div class="metastrip">
-      ${msec('branch', 'lang', repoStack(r))}
-      <span class="m">${st === 'failed' ? I.high : st === 'clean' ? I.shield : I.scan}status <b>${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</b></span>
-      ${msec('branch', 'commits', (r.commits || 0).toLocaleString())}
-      ${msec('cron', 'scan', (r.scanSeconds || 0) + 's')}
-      ${r.cloneMB != null ? msec('package', 'clone', r.cloneMB + ' MB') : ''}
-      ${(h + m + l) ? `<span class="m sev">findings <span class="d dh"></span><b>${h}</b> <span class="d dm"></span><b>${m}</b> <span class="d dl"></span><b>${l}</b></span>` : `<span class="m">findings <b>${st === 'failed' ? '— scan failed' : '0 · clean'}</b></span>`}
+
+    <div class="divider" style="margin:1.25rem 0"></div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:1rem 2rem;font-size:0.85rem">
+      <span style="color:var(--text-muted)">Status: <span style="color:${st === 'failed' ? 'var(--red)' : st === 'clean' ? 'var(--green-brand)' : 'var(--amber)'};font-weight:500">${st === 'failed' ? 'Signal Lost' : st.charAt(0).toUpperCase() + st.slice(1)}</span></span>
+      <span style="color:var(--text-muted)">Stack: <span style="color:var(--cyan)">${esc(repoStack(r))}</span></span>
+      ${r.commits ? `<span style="color:var(--text-muted)">Commits: <span style="color:var(--text-secondary)">${r.commits.toLocaleString()}</span></span>` : ''}
+      ${(h + m + l) ? `<span style="color:var(--text-muted)">Findings: <span style="color:var(--red);font-weight:500">${h} high</span>, <span style="color:var(--amber)">${m} med</span>, <span style="color:var(--green-brand)">${l} low</span></span>` : ''}
+      ${r.scanSeconds ? `<span style="color:var(--text-muted)">Scan: <span style="color:var(--text-secondary)">${r.scanSeconds}s</span></span>` : ''}
+      ${r.cloneMB != null ? `<span style="color:var(--text-muted)">Clone: <span style="color:var(--text-secondary)">${r.cloneMB} MB</span></span>` : ''}
     </div>
-    ${shieldRow(r)}
-  </header>
-  ${signals || fr?.topContributors?.length ? `<div class="sec" style="margin-top:1.5rem"><span class="chip">${I.eye} Signals</span><h2>What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, ownership, and churn — read from the repo, not estimated.</p></div>${contributorStrip(fr)}<div class="charts">${signals}</div>` : ''}
-  <div class="sec"><span class="chip">${I.file} Forged skill</span><h2>The skill it forged</h2><p class="sub">The whole artifact — every file Claude inherits, each finding cited to a real path.</p></div>
-  ${skillPanel(r)}
-  <div class="verdict ${st === 'failed' ? 'fail' : ''}">${stamp(st === 'failed' ? 'INCOMPLETE' : 'ORACLE PASS')}${esc(r.verdict || 'No verdict recorded.')}</div>
-  <div id="toast" role="status" aria-live="polite" class="toast"></div>
-  ${siteFooter()}`
-  return shell(`llama-smith · ${full}`, body, FILES_JS + RESCAN_JS)
+  </div>
+
+  <div style="margin-top:2.5rem">
+    <div style="margin-bottom:1.25rem">
+      <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Generated Artifact</span>
+      <h2 style="margin-top:0.375rem;font-size:1.25rem;font-weight:600;color:var(--text-primary)">The Skill It Forged</h2>
+      <p style="margin-top:0.375rem;font-size:0.9rem;color:var(--text-secondary)">Every claim is cited to a real file path or marked <strong style="color:var(--amber)">unknown</strong>.</p>
+    </div>
+    ${skillPanel(r)}
+  </div>
+
+  ${signals || fr?.topContributors?.length ? `
+  <div style="margin-top:2.5rem">
+    <div style="margin-bottom:1.25rem">
+      <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Forensic Analysis</span>
+      <h2 style="margin-top:0.375rem;font-size:1.25rem;font-weight:600;color:var(--text-primary)">Evidence it's grounded</h2>
+      <p style="margin-top:0.375rem;font-size:0.9rem;color:var(--text-secondary)">The skill above is built only from these readings — architecture, ownership, risk, and coverage, read from the repo, not estimated.</p>
+    </div>
+    ${evPills ? `<div class="evidence-strip">${evPills}</div>` : ''}
+    <details class="evidence-details" open style="margin-top:1rem">
+      <summary>Show all readings</summary>
+      <div class="grid" style="margin-top:1.25rem">${signals}</div>
+    </details>
+  </div>` : ''}
+
+  <div style="margin-top:2.5rem;display:flex;justify-content:flex-end">
+    <button class="btn btn-danger delete-report" data-repo="${esc(r.repo)}" style="display:inline-flex;align-items:center;gap:0.4rem">${TRASH_SVG} Delete report</button>
+  </div>
+</section>
+${siteFooter()}`
+  return shell(`llama-smith · ${full}`, body, COPY_JS + TECH_JS + DELETE_JS)
 }
 
-// Programmatic API: rebuild the dashboard from an array of result objects.
-// Called by the CLI after a scan to regenerate HTML before serving.
 export function buildDashboard(results, out = outDir) {
   const saved = data
   data.length = 0
@@ -590,7 +754,8 @@ export function buildDashboard(results, out = outDir) {
   return out
 }
 
-if (process.argv[1] && realpathSync(dirname(dirname(fileURLToPath(import.meta.url)))) === LS) {
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+  try { data = JSON.parse(readFileSync(process.argv[2] || '/tmp/ls-results.json', 'utf8')) } catch { data = [] }
   mkdirSync(outDir, { recursive: true })
   writeFileSync(join(outDir, 'index.html'), indexPage())
   for (const r of data) writeFileSync(join(outDir, `${safeName(r.repo)}.html`), repoPage(r))

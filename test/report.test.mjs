@@ -8,89 +8,81 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const LS = join(__dirname, '..')
+const XSS = '<script>alert(document.cookie)</script>'
 
-test('repo page includes re-scan button with absolute path command', () => {
+function build(data) {
   const tmp = mkdtempSync(join(tmpdir(), 'ls-report-'))
-  const data = [{
-    repo: 'kerge',
-    repoPath: '/Users/art/projects/kerge',
-    stack: 'JS',
-    commits: 42,
-    opsFindings: [],
-    architecture: [],
-    forensics: { busFactor: 2, risk: 'MODERATE', contributors: 3, topContributors: [] },
-    commands: [],
-    entrypoints: [],
-    boundaries: [],
-    scannedAt: new Date().toISOString(),
-  }]
   const jsonPath = join(tmp, 'data.json')
   writeFileSync(jsonPath, JSON.stringify(data))
   const outDir = join(tmp, 'reports')
-
   execFileSync('node', ['scripts/report.mjs', jsonPath, outDir], { cwd: LS })
+  return {
+    tmp, outDir,
+    index: readFileSync(join(outDir, 'index.html'), 'utf8'),
+    page: repo => readFileSync(join(outDir, `${repo}.html`), 'utf8'),
+  }
+}
 
-  const html = readFileSync(join(outDir, 'kerge.html'), 'utf8')
-  assert.ok(html.includes('rescan-btn'), 'button class present')
-  assert.ok(html.includes('data-cmd='), 'data-cmd attribute present')
-  assert.ok(html.includes('/Users/art/projects/kerge'), 'repoPath in command')
-  assert.ok(html.includes('id="toast"'), 'toast div present')
-  assert.ok(html.includes('role="status"'), 'toast has status role')
-
-  rmSync(tmp, { recursive: true, force: true })
+const baseRepo = (over = {}) => ({
+  repo: 'evil', fullName: 'attacker/evil', stack: 'JS', commits: 5, group: 'interesting',
+  opsFindings: [], architecture: [], forensics: null,
+  commands: [], entrypoints: [], boundaries: [], scannedAt: new Date().toISOString(), ...over,
 })
 
-test('repo page falls back to relative command when repoPath is absent', () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'ls-report-'))
-  const data = [{
-    repo: 'bare-repo',
-    stack: 'JS',
-    commits: 10,
-    opsFindings: [],
-    architecture: [],
-    forensics: null,
-    commands: [],
-    entrypoints: [],
-    boundaries: [],
-    scannedAt: new Date().toISOString(),
-  }]
-  const jsonPath = join(tmp, 'data.json')
-  writeFileSync(jsonPath, JSON.stringify(data))
-  const outDir = join(tmp, 'reports')
-
-  execFileSync('node', ['scripts/report.mjs', jsonPath, outDir], { cwd: LS })
-
-  const html = readFileSync(join(outDir, 'bare-repo.html'), 'utf8')
-  assert.ok(html.includes('rescan-btn'), 'button present for repo name fallback')
-  assert.ok(html.includes('cd ../bare-repo'), 'relative fallback in command')
-
-  rmSync(tmp, { recursive: true, force: true })
+test('writes an index page and one page per repo', () => {
+  const b = build([baseRepo()])
+  assert.ok(b.index.includes('<!DOCTYPE html>'), 'index is an HTML document')
+  assert.ok(b.page('evil').includes('attacker'), 'repo page rendered')
+  rmSync(b.tmp, { recursive: true, force: true })
 })
 
-test('repo page quotes paths containing spaces', () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'ls-report-'))
-  const data = [{
-    repo: 'my project',
-    repoPath: '/Users/art/my projects/kerge',
-    stack: 'JS',
-    commits: 10,
-    opsFindings: [],
-    architecture: [],
-    forensics: null,
-    commands: [],
-    entrypoints: [],
-    boundaries: [],
-    scannedAt: new Date().toISOString(),
-  }]
-  const jsonPath = join(tmp, 'data.json')
-  writeFileSync(jsonPath, JSON.stringify(data))
-  const outDir = join(tmp, 'reports')
+test('escapes HTML in git author names (a scanned repo cannot inject script)', () => {
+  // keyPeople names come from `git log %an` of the untrusted scanned repo
+  const data = [baseRepo({
+    forensics: {
+      busFactor: 1, risk: 'CRITICAL', contributors: 2, codeFiles: 10, singleOwner: [],
+      keyPeople: [{ name: XSS, files: 5 }], topContributors: [{ name: XSS, commits: 3 }],
+    },
+  })]
+  const b = build(data)
+  const page = b.page('evil')
+  assert.ok(!page.includes(XSS), 'raw <script> from author name must not reach the page')
+  assert.ok(page.includes('&lt;script&gt;'), 'author name is HTML-escaped')
+  rmSync(b.tmp, { recursive: true, force: true })
+})
 
-  execFileSync('node', ['scripts/report.mjs', jsonPath, outDir], { cwd: LS })
+test('escapes HTML in the repo identity (org/name)', () => {
+  const b = build([baseRepo({ fullName: `attacker/${XSS}` })])
+  assert.ok(!b.page('evil').includes(XSS), 'repo name escaped on detail page')
+  assert.ok(!b.index.includes(XSS), 'repo name escaped on index card')
+  rmSync(b.tmp, { recursive: true, force: true })
+})
 
-  const html = readFileSync(join(outDir, 'my_project.html'), 'utf8')
-  assert.ok(html.includes('my projects'), 'repoPath with spaces present in command')
-  assert.ok(html.includes('&quot;'), 'quotes escaped as HTML entities')
+test('renders corpus charts (chart() receives an object body, not a string)', () => {
+  const data = [baseRepo({
+    opsFindings: [{ smith: 'secret', severity: 'high', text: 'leak', file: 'a.js' }],
+    architecture: [{ area: 'modules', claim: 'm', file: 'm.js' }],
+  })]
+  const b = build(data)
+  assert.ok(b.index.includes('class="barchart"'), 'corpus charts render instead of silently collapsing to empty')
+  rmSync(b.tmp, { recursive: true, force: true })
+})
 
-  rmSync(tmp, { recursive: true, force: true })
+test('copy-skill button uses a data attribute, never an inline JS handler', () => {
+  const data = [baseRepo({ opsFindings: [{ smith: 'secret', severity: 'high', text: 'x', file: 'a.js' }] })]
+  const b = build(data)
+  const page = b.page('evil')
+  assert.ok(page.includes('class="btn btn-primary copy-skill"'), 'button carries the copy-skill class')
+  assert.ok(page.includes('data-skill='), 'skill name lives in a data attribute')
+  assert.ok(!page.includes('onclick="navigator.clipboard'), 'no untrusted string in an inline handler')
+  rmSync(b.tmp, { recursive: true, force: true })
+})
+
+test('nav Docs link points to real documentation, not a dead anchor', () => {
+  const b = build([baseRepo()])
+  const docs = b.index.match(/<a[^>]*>Docs<\/a>/)
+  assert.ok(docs, 'a Docs nav link exists')
+  assert.ok(!docs[0].includes('href="#"'), 'Docs link is not a dead href="#" anchor')
+  assert.ok(docs[0].includes('github.com/artttj/llama-smith'), 'Docs link points to the project docs')
+  rmSync(b.tmp, { recursive: true, force: true })
 })

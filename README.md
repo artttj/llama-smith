@@ -15,6 +15,8 @@ Many Smiths enter.
 One skill comes out.
 ```
 
+**Live demo:** [artttj.de/llama-smith](https://artttj.de/llama-smith) — the forensic dashboard, scanning real public repos.
+
 ## 🔍 What it actually does
 
 Most "repo to AI context" tools summarize what the code *is* and stop there. llama-smith builds the project's map and grounds every line in a file: what the app is and how data moves through it, the deploy that SSHes into a hardcoded IP, the release that publishes on any tag with no gate, the files only one person understands. The stuff nobody writes down (yes, including this README).
@@ -48,20 +50,22 @@ The `AGENTS.md` is the cross-tool version: a single thorough file so anyone on o
 
 ## 📊 Dashboard
 
-Generate a forensic HTML dashboard to browse scan results across repos:
+Browse scan results across repos as a self-contained HTML dashboard:
 
 ```bash
-node scripts/report.mjs /path/to/results.json ./reports
+node llama-smith.mjs serve                       # build + serve on localhost:7777
+node scripts/report.mjs results.json ./reports   # just write the HTML
 ```
 
-The dashboard shows:
-- **Repo grades** (A-F) based on validated risks, architecture coverage, and ownership concentration
-- **Findings by severity** — high, medium, and low, with file path citations
-- **Architecture coverage** — how well the Smiths mapped the codebase
-- **Ownership risk** — bus factor and single-owner files
-- **Forged skills** — the Claude-ready output with claim counts and validation status
+![llama-smith dashboard](assets/screenshots/dashboard.png)
 
-Colors are semantic: green for validated/success, red for high severity, amber for warning, cyan for technical metadata. The design prioritizes scan results over atmosphere — content sits on clean dark panels with strong contrast and readable typography.
+Each repo gets its own page, and the forged skill is the headline, not something buried under metrics. The skill sits right under the repo identity with the files it wrote, and two status lines: **Oracle validated** (every claim was checked against its cited file) and **self-learning memory** (your corrections fold in on the next run).
+
+![a forged skill report](assets/screenshots/report.png)
+
+Under the skill is the evidence it was built from. Findings by severity and the single-owner/shared split are donut charts; bus factor, hot files, architecture coverage, and module ownership are bars. Each repo carries a risk score (A–F) from its validated findings, ownership concentration, and how much of the architecture the Smiths mapped. You can delete a report straight from the dashboard.
+
+Color means something here: green is validated, red is high severity, amber is a warning, cyan is metadata. Every page inlines its own CSS and hero art, so a single `.html` file opens anywhere with nothing else to ship.
 
 ## 🔌 Install (Claude Code plugin)
 
@@ -75,6 +79,13 @@ Then point it at a repo:
 ```
 /llama-smith ./path/to/repo
 ```
+
+The plugin adds four commands, so you never type raw `node`:
+
+- `/llama-smith <repo>` — scan, validate, forge the skill
+- `/llama-smith-lesson <repo> "<correction>"` — teach the skill; folded into memory on the next run
+- `/llama-smith-dashboard` — build and serve the forensic dashboard on localhost
+- `/llama-smith-diff <repo> [--base <ref>] [--head <ref>]` — scan only what a PR changed
 
 You need Node 20+ and Ollama running. Cloud models by default; add `--local` to keep everything on your machine.
 
@@ -95,11 +106,11 @@ It writes the skill into `<repo>/.claude/skills/<repo>-smith/` and the raw findi
 
 When the agent gets something wrong and you correct it, tell the skill:
 
-```bash
-node scripts/lesson.mjs ./repo "deploy from production, not main"
+```
+/llama-smith-lesson ./repo "deploy from production, not main"
 ```
 
-The **Self-Improvement Oracle** takes that lesson in at high confidence and folds it into `memory.md` on the next run. Corrections are kept per repo, so one project's scar tissue never leaks into another's. Observations mined from past sessions enter low and only stick if they keep showing up.
+The **Self-Learning Memory** takes that lesson in at high confidence and folds it into `memory.md` on the next run. Corrections are kept per repo, so one project's scar tissue never leaks into another's. Observations mined from past sessions enter low and only stick if they keep showing up.
 
 ## 🛠️ Under the hood
 
@@ -111,7 +122,3 @@ Zero dependencies. Node 20+ and `node --test`. A thin CLI over a few small modul
 - The Oracle fixes false positives, not false negatives. If no Smith looks at a file, nothing catches what it missed.
 - Forensics read git authorship. They surface real contributor names from history and need a few months of commits to mean anything.
 - Run it on repos you own or are cleared to scan. It names secrets by location, never by value, and it never touches production on its own.
-
-## 🚦 Status
-
-Working today: the architecture Smith, the ops swarm, the Oracle, the deterministic extractors, the git forensics, the multi-file forge, the `AGENTS.md` output, the self-learning memory, and a forensic dashboard for browsing results across repos. Next on my list is smarter dedup (the current word-overlap trick is fine, not clever) and a deeper deploy read across more stacks.
