@@ -105,7 +105,7 @@ const brandbar = () => `<header class="header">
 </header>`
 const siteFooter = () => `<footer class="footer">
   <span class="footer-main"><b>Llama Smith</b> — it does not summarize your repo. It forges operational memory from it.</span>
-  <span class="footer-sub">MIT © Artem Iagovdik · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
+  <span class="footer-sub">MIT © <a href="https://artttj.de">Artem Iagovdik</a> · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
 </footer>`
 
 const heroSection = () => {
