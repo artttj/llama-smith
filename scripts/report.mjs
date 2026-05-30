@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync, realpathSync, existsSync, copyF
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildSkillFiles, adaptLessons } from '../lib/skill.mjs'
+import { FRESH_DAYS, STALE_DAYS } from '../lib/freshness.mjs'
 
 const LS = realpathSync(dirname(dirname(fileURLToPath(import.meta.url))))
 const src = process.argv[2] || '/tmp/ls-results.json'
@@ -215,6 +216,9 @@ const techBadges = r => (r.tech?.length ? `<div class="techbadges">${r.tech.map(
 function shieldRow(r) {
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low'), tot = h + m + l
   const fr = r.forensics, v = vibeScore(r)
+  const now = new Date()
+  const ageDays = r.scannedAt ? Math.floor((now - new Date(r.scannedAt)) / 86400000) : null
+  const ageHex = ageDays == null ? '8a8f87' : ageDays <= FRESH_DAYS ? TIERHEX.low : ageDays > STALE_DAYS ? TIERHEX.high : TIERHEX.med
   const nodeVer = (r.stackFull || '').match(/node\s*([>=<\s.\d]+)/i)?.[1]?.trim()
   return `<div class="shields">${[
     SHIELD('stack', repoStack(r), '3ddc84'),
@@ -232,6 +236,7 @@ function shieldRow(r) {
     r.cloneMB != null ? SHIELD('clone', `${r.cloneMB} MB`, '8a8f87') : '',
     SHIELD('forged by', 'llama-smith', '3ddc84'),
     SHIELD('oracle', 'validated', '3ddc84'),
+    ageDays != null ? SHIELD('skill age', `${ageDays}d`, ageHex) : '',
   ].filter(Boolean).join('')}</div>`
 }
 
