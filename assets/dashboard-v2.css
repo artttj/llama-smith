@@ -398,3 +398,182 @@ body::after {
   font-size: 0.75rem;
   padding: 0.4rem 0.8rem;
 }
+
+/* Severity bar - stacked horizontal */
+.sevbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sevbar-track {
+  display: flex;
+  height: 10px;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  gap: 2px;
+}
+
+.sevbar-seg {
+  display: block;
+  height: 100%;
+}
+
+.sevbar-seg-high { background: var(--red); }
+.sevbar-seg-medium { background: var(--amber); }
+.sevbar-seg-low { background: var(--green-brand); }
+
+.sevbar-legend {
+  display: flex;
+  gap: 1.2rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.sevbar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.sevbar-item b {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sevbar-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sevbar-dot-high { background: var(--red); }
+.sevbar-dot-medium { background: var(--amber); }
+.sevbar-dot-low { background: var(--green-brand); }
+
+/* Horizontal bar chart */
+.barchart {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.barchart-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) 1fr auto;
+  gap: 0.8rem;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.barchart-label {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barchart-track {
+  height: 10px;
+  background: var(--line-subtle);
+  border-radius: var(--r-xs);
+  overflow: hidden;
+}
+
+.barchart-fill {
+  display: block;
+  height: 100%;
+  background: var(--green-brand);
+  border-radius: var(--r-xs);
+  transition: width 0.3s ease;
+}
+
+.barchart-fill-danger {
+  background: var(--red);
+}
+
+.barchart-fill-warning {
+  background: var(--amber);
+}
+
+.barchart-value {
+  color: var(--green-hot);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 0.74rem;
+}
+
+.barchart-row.danger .barchart-value {
+  color: var(--red);
+}
+
+/* Grade gauge - circular */
+.gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gauge-disc {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.gauge-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gauge-track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 10;
+}
+
+.gauge-progress {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.gauge-progress-a,
+.gauge-progress-b { stroke: var(--green-brand); }
+.gauge-progress-c { stroke: var(--amber); }
+.gauge-progress-d,
+.gauge-progress-f { stroke: var(--red); }
+
+.gauge-mid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  line-height: 1;
+}
+
+.gauge-score {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--green-hot);
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge-grade {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.gauge-cap {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
