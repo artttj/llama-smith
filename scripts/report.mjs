@@ -813,8 +813,8 @@ function repoPage(r) {
         <div style="min-width:0">
           <div style="display:flex;align-items:center;gap:0.625rem;flex-wrap:wrap">
             ${r.url
-              ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" class="repo-title-link" style="font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;font-family:var(--font-display)" title="View ${esc(full)} on GitHub">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}${EXT_ICON}</a>`
-              : `<div style="font-size:1.5rem;font-weight:700;color:var(--text-primary);letter-spacing:-0.02em;font-family:var(--font-display)" title="Cloned locally — no public remote">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}</div>`}
+              ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" class="repo-title-link" style="font-size:clamp(1.1rem,5vw,1.5rem);font-weight:700;letter-spacing:-0.02em;font-family:var(--font-display)" title="View ${esc(full)} on GitHub">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}${EXT_ICON}</a>`
+              : `<div style="font-size:clamp(1.1rem,5vw,1.5rem);font-weight:700;color:var(--text-primary);letter-spacing:-0.02em;font-family:var(--font-display)" title="Cloned locally — no public remote">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}</div>`}
             <div class="score-ring" style="border-color:${gradeColor}" title="Risk grade ${grade.grade} — score ${grade.score}/100 from validated findings and code ownership (bus factor, single-owner files)" aria-label="Risk grade ${grade.grade}, score ${grade.score} of 100">
               <span class="score-ring-num">${grade.score}</span>
               <span class="score-ring-grade" style="color:${gradeColor}">${grade.grade}</span>

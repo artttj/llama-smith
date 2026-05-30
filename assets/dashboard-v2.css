@@ -1688,6 +1688,26 @@ details.evidence-details[open] > summary::before { transform: rotate(90deg); }
   color: var(--green-brand);
 }
 
+/* Mobile overflow safety — let grid/flex panels shrink below their content's
+   min-content (default min-width:auto otherwise blows the layout past the
+   viewport) and let long text and file paths wrap. */
+.panel,
+.stat-card,
+.proof-card,
+.artifact-meta,
+.artifact-files { min-width: 0; }
+
+.card-desc,
+.proof-text,
+.evidence-text,
+.repo-title-link { overflow-wrap: anywhere; }
+
+.path-chip { overflow-wrap: anywhere; word-break: break-all; max-width: 100%; }
+
+.stat-cap { flex-wrap: wrap; }
+
+.health-row > span:first-child { min-width: 0; }
+
 /* Responsive */
 @media (max-width: 768px) {
   .hero {
