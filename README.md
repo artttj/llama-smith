@@ -1,10 +1,10 @@
 # Llama Smith
 
-![license MIT](https://img.shields.io/badge/license-MIT-3ddc84)
-![node 20+](https://img.shields.io/badge/node-20%2B-3ddc84)
-![zero dependencies](https://img.shields.io/badge/dependencies-0-3ddc84)
-![tests](https://img.shields.io/badge/tests-node--test-3ddc84)
-![runs on Ollama](https://img.shields.io/badge/runs%20on-Ollama-3ddc84)
+![license MIT](https://img.shields.io/badge/license-MIT-48dc55)
+![node 20+](https://img.shields.io/badge/node-20%2B-48dc55)
+![zero dependencies](https://img.shields.io/badge/dependencies-0-48dc55)
+![tests](https://img.shields.io/badge/tests-node--test-48dc55)
+![runs on Ollama](https://img.shields.io/badge/runs%20on-Ollama-48dc55)
 
 ![Llama Smith — a local model swarm that turns a real repo into an operational Claude Code skill](assets/banner-2.webp)
 
