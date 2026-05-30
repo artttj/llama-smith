@@ -19,6 +19,17 @@ One skill comes out.
 
 **Live demo:** [artttj.de/llama-smith](https://artttj.de/llama-smith) — the forensic dashboard, scanning real public repos.
 
+## ⚡ Quick start
+
+```
+/plugin marketplace add artttj/llama-smith
+/plugin install llama-smith@llama-smith
+/reload-plugins
+/llama-smith ./path/to/repo
+```
+
+Needs Node 20+ and Ollama running. No plugin? Run it directly: `node llama-smith.mjs ./repo`. Full options are in the Install section below.
+
 ## 🔍 What it actually does
 
 Most "repo to AI context" tools summarize what the code *is* and stop there. llama-smith builds the project's map and grounds every line in a file: what the app is and how data moves through it, the deploy that SSHes into a hardcoded IP, the release that publishes on any tag with no gate, the files only one person understands. The stuff nobody writes down (yes, including this README).
@@ -75,6 +86,7 @@ Color carries one meaning each: green healthy, red critical, amber watch, cyan n
 ```
 /plugin marketplace add artttj/llama-smith
 /plugin install llama-smith@llama-smith
+/reload-plugins
 ```
 
 Then point it at a repo:
