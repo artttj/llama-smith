@@ -157,3 +157,86 @@ body::after {
     transparent 85%
   );
 }
+
+/* Typography scale */
+
+/* Display - hero headlines */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.2rem + 2.5vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--green-hot);
+  text-shadow: 0 0 24px var(--green-glow);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1rem + 1.6vw, 2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+/* Section headers */
+.section-title {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* Body text */
+.body {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.body-strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Small text */
+.label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.meta {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.tiny {
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+/* Quote/callout text */
+.quote {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  border-left: 2px solid var(--line-strong);
+  padding-left: 1rem;
+}
