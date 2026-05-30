@@ -12,7 +12,7 @@ export const VERSION = '0.2.0'
 const VERBS = new Set(['run', 'scan', 'forge', 'diff'])
 
 export function parseArgs(argv) {
-  const args = { verb: 'run', path: '.', local: false, scanOnly: false, json: false, rounds: 2, oracle: true, missed: null, incremental: false }
+  const args = { verb: 'run', path: '.', local: false, scanOnly: false, json: false, rounds: 2, oracle: true, missed: null, incremental: false, semantic: false, base: 'HEAD~1', head: 'HEAD' }
   let verbSet = false
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
@@ -22,6 +22,9 @@ export function parseArgs(argv) {
     else if (a === '--no-oracle') args.oracle = false
     else if (a === '--missed' && i + 1 < argv.length && !argv[i + 1].startsWith('-')) args.missed = argv[++i]
     else if (a === '--incremental' || a === '--inc') args.incremental = true
+    else if (a === '--semantic') args.semantic = true
+    else if (a === '--base' && i + 1 < argv.length) args.base = argv[++i]
+    else if (a === '--head' && i + 1 < argv.length) args.head = argv[++i]
     else if (a === '--rounds' && i + 1 < argv.length) args.rounds = Math.max(1, parseInt(argv[++i], 10) || 2)
     else if (!verbSet && VERBS.has(a)) { args.verb = a; verbSet = true }
     else if (!a.startsWith('-')) args.path = a
@@ -38,7 +41,17 @@ async function main() {
     console.log(`recorded (missed) — ${lessons.length} lesson(s) in ${root}/.smith/lessons.json`)
     return
   }
-  const opts = { local: args.local, rounds: args.rounds, oracle: args.oracle, scanOnly: args.scanOnly || args.verb === 'scan', incremental: args.incremental }
+  if (args.verb === 'diff') {
+    const { runPRScan } = await import('./lib/prscan.mjs')
+    const pr = await runPRScan(root, { base: args.base, head: args.head, oracle: args.oracle, local: args.local })
+    if (args.json) { console.log(JSON.stringify(pr, null, 2)); return }
+    console.log(`llama-smith diff · ${args.base}...${args.head}`)
+    console.log(`${pr.changed.length} changed file(s), ${pr.findings.length} finding(s)${pr.note ? ` — ${pr.note}` : ''}\n`)
+    for (const f of pr.findings) console.log(`  [pr|${f.smith}/${f.severity}] ${f.text}${f.file ? `  (${f.file})` : ''}`)
+    if (pr.changed.length) console.log(`\nwrote  → ${join(root, '.smith', 'pr-findings.json')}`)
+    return
+  }
+  const opts = { local: args.local, rounds: args.rounds, oracle: args.oracle, semantic: args.semantic, scanOnly: args.scanOnly || args.verb === 'scan', incremental: args.incremental }
   const res = await runPipeline(root, opts)
   if (args.json) { console.log(JSON.stringify(res.json, null, 2)); return }
 
