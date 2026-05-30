@@ -98,3 +98,62 @@ body {
   margin: 0 auto;
   padding: 0 var(--gut);
 }
+
+/* Matrix rain canvas - muted at center, visible at edges */
+canvas#rain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.035;
+  pointer-events: none;
+  mask-image: radial-gradient(
+    ellipse 80% 80% at 50% 50%,
+    transparent 40%,
+    black 75%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 80% 80% at 50% 50%,
+    transparent 40%,
+    black 75%
+  );
+}
+
+/* Scanlines - very subtle, edge only */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.08;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    oklch(0% 0 0 / 0.15) 3px 4px
+  );
+  mask-image: radial-gradient(
+    ellipse 85% 85% at 50% 50%,
+    transparent 50%,
+    black 85%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 85% 85% at 50% 50%,
+    transparent 50%,
+    black 85%
+  );
+}
+
+/* Reading mask - clears atmosphere behind content */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 85% 85% at 50% 45%,
+    var(--bg) 0%,
+    var(--bg) 45%,
+    transparent 85%
+  );
+}
