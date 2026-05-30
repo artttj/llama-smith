@@ -1,0 +1,100 @@
+/* llama-smith forensic dashboard v2 */
+/* Design tokens: color, typography, spacing */
+
+:root {
+  /* Background - near-black with subtle green tint */
+  --bg: oklch(8% 0.015 145);
+  --bg-elevated: oklch(12% 0.018 150);
+
+  /* Surface layers - content panels */
+  --surface: oklch(16% 0.02 150);
+  --surface-hover: oklch(20% 0.025 150);
+  --surface-active: oklch(24% 0.03 150);
+
+  /* Lines and borders */
+  --line-subtle: oklch(22% 0.025 150);
+  --line: oklch(30% 0.035 150);
+  --line-strong: oklch(40% 0.045 150);
+
+  /* Primary green - used sparingly */
+  --green-brand: oklch(75% 0.18 150);
+  --green-hot: oklch(85% 0.22 150);
+  --green-glow: oklch(85% 0.22 150 / 0.4);
+
+  /* Semantic colors - distinct meanings */
+  --red: oklch(60% 0.22 25);
+  --red-glow: oklch(60% 0.22 25 / 0.3);
+  --amber: oklch(75% 0.15 75);
+  --cyan: oklch(70% 0.08 195);
+
+  /* Text hierarchy */
+  --text-primary: oklch(92% 0.01 150);
+  --text-secondary: oklch(72% 0.025 150);
+  --text-muted: oklch(55% 0.02 150);
+  --text-faint: oklch(40% 0.015 150);
+
+  /* Typography */
+  --font-display: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-body: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  /* Spacing */
+  --r-lg: 16px;
+  --r: 12px;
+  --r-sm: 8px;
+  --r-xs: 4px;
+  --gut: clamp(1rem, 0.6rem + 1.6vw, 2rem);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.4);
+  --shadow: 0 4px 12px oklch(0% 0 0 / 0.35);
+  --shadow-lg: 0 8px 30px oklch(0% 0 0 / 0.4);
+  --shadow-glow: 0 0 20px var(--green-glow);
+}
+
+/* Base reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-bottom: 5rem;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  canvas#rain {
+    display: none;
+  }
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--green-brand);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* Main wrapper */
+.wrap {
+  position: relative;
+  z-index: 2;
+  width: min(1240px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 0 var(--gut);
+}
