@@ -240,3 +240,161 @@ body::after {
   border-left: 2px solid var(--line-strong);
   padding-left: 1rem;
 }
+
+/* Panel/Card component */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+
+.panel:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.panel-interactive:hover {
+  border-color: var(--green-brand);
+  box-shadow: var(--shadow), 0 0 20px var(--green-glow);
+}
+
+/* Elevated panel - for hero sections */
+.panel-elevated {
+  background: linear-gradient(180deg, var(--surface-hover), var(--surface));
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  padding: 1.5rem;
+  box-shadow: var(--shadow), 0 0 0 1px oklch(0% 0 0 / 0.4);
+}
+
+/* Section spacing */
+.section {
+  margin: 4rem 0 1.5rem;
+}
+
+.section-header {
+  margin-bottom: 1.5rem;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+}
+
+/* Severity badges */
+.badge-high {
+  background: var(--red);
+  color: oklch(10% 0.02 25);
+}
+
+.badge-medium {
+  background: var(--amber);
+  color: oklch(15% 0.05 75);
+}
+
+.badge-low {
+  border: 1px solid var(--green-brand);
+  color: var(--green-brand);
+}
+
+/* Grade badge - compact pill */
+.badge-grade {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 2px solid;
+}
+
+.badge-grade-a,
+.badge-grade-b {
+  border-color: var(--green-brand);
+  color: var(--green-brand);
+}
+
+.badge-grade-c {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.badge-grade-d,
+.badge-grade-f {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* Stack badge - cyan */
+.badge-stack {
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+}
+
+/* Status badges */
+.badge-success {
+  background: var(--green-brand);
+  color: var(--bg);
+}
+
+.badge-neutral {
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--r-sm);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--green-brand);
+  color: var(--bg);
+}
+
+.btn-primary:hover {
+  background: var(--green-hot);
+  box-shadow: 0 0 16px var(--green-glow);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--green-brand);
+  border: 1px solid var(--line-strong);
+}
+
+.btn-secondary:hover {
+  border-color: var(--green-brand);
+  background: oklch(20% 0.03 150);
+}
+
+.btn-sm {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.8rem;
+}
