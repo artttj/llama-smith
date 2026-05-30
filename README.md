@@ -46,6 +46,23 @@ A skill folder, architecture-first:
 
 The `AGENTS.md` is the cross-tool version: a single thorough file so anyone on opencode or Cursor gets the same architecture-first map, not just Claude Code.
 
+## Dashboard
+
+Generate a forensic HTML dashboard to browse scan results across repos:
+
+```bash
+node scripts/report.mjs /path/to/results.json ./reports
+```
+
+The dashboard shows:
+- **Repo grades** (A-F) based on validated risks, architecture coverage, and ownership concentration
+- **Findings by severity** — high, medium, and low, with file path citations
+- **Architecture coverage** — how well the Smiths mapped the codebase
+- **Ownership risk** — bus factor and single-owner files
+- **Forged skills** — the Claude-ready output with claim counts and validation status
+
+Colors are semantic: green for validated/success, red for high severity, amber for warning, cyan for technical metadata. The design prioritizes scan results over atmosphere — content sits on clean dark panels with strong contrast and readable typography.
+
 ## Install (Claude Code plugin)
 
 ```
@@ -97,4 +114,4 @@ Zero dependencies. Node 20+ and `node --test`. A thin CLI over a few small modul
 
 ## Status
 
-Working today: the architecture Smith, the ops swarm, the Oracle, the deterministic extractors, the git forensics, the multi-file forge, the `AGENTS.md` output, the self-learning memory, and a Matrix-flavored dashboard for browsing results across repos. Next on my list is smarter dedup (the current word-overlap trick is fine, not clever) and a deeper deploy read across more stacks.
+Working today: the architecture Smith, the ops swarm, the Oracle, the deterministic extractors, the git forensics, the multi-file forge, the `AGENTS.md` output, the self-learning memory, and a forensic dashboard for browsing results across repos. Next on my list is smarter dedup (the current word-overlap trick is fine, not clever) and a deeper deploy read across more stacks.
