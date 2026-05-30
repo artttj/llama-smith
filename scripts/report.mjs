@@ -102,10 +102,19 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <body><canvas id="rain"></canvas><div class="wrap">${body}</div>
 <script>${RAIN}${AVATAR_JS}${js}</script></body></html>`
 
-const brandbar = () => `<a class="brandbar" href="index.html"><span class="bt">llama<b>·</b>smith</span></a>`
-const siteFooter = () => `<footer>
-  <span class="foot-main"><b>llama·smith</b> — it does not summarize your repo. It forges operational memory from it.</span>
-  <span class="foot-sub">MIT © Artem Iagovdik · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
+const brandbar = () => `<header class="header">
+  <a class="brand" href="index.html">
+    llama<span>·</span>smith
+  </a>
+  <nav class="nav-actions">
+    <a href="https://github.com/artttj/llama-smith" class="btn btn-sm btn-secondary" target="_blank" rel="noopener">GitHub</a>
+    <a href="#" class="btn btn-sm btn-secondary">Docs</a>
+    <button class="btn btn-sm btn-primary" onclick="alert('Run: node llama-smith.mjs <repo-path>')">Scan repo</button>
+  </nav>
+</header>`
+const siteFooter = () => `<footer class="footer">
+  <span class="footer-main"><b>llama·smith</b> — it does not summarize your repo. It forges operational memory from it.</span>
+  <span class="footer-sub">MIT © Artem Iagovdik · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
 </footer>`
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
