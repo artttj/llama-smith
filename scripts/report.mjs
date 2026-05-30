@@ -154,8 +154,8 @@ function vibeScore(r) {
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
   const fr = r.forensics
   let s = 100 - (h * 12 + m * 5 + l * 2)
-  if (fr?.busFactor) {
-    if (fr.busFactor === 1) s -= 18
+  if (fr && typeof fr.busFactor === 'number') {
+    if (fr.busFactor <= 1) s -= 18
     else if (fr.busFactor === 2) s -= 10
     s -= Math.round((fr.singleOwnerRatio || 0) * 20)
   }
@@ -207,11 +207,11 @@ function shieldRow(r) {
     SHIELD('stack', repoStack(r), '3ddc84'),
     nodeVer ? SHIELD('node', nodeVer, '3ddc84') : '',
     SHIELD('commits', (r.commits || 0).toLocaleString(), '3ddc84'),
-    fr?.contributors ? SHIELD('contributors', String(fr.contributors), '3ddc84') : '',
+    fr && 'contributors' in fr ? SHIELD('contributors', String(fr.contributors), '3ddc84') : '',
     SHIELD('vibe', `${v.score} ${v.grade}`, TIERHEX[v.tier]),
     SHIELD('findings', String(tot), h ? TIERHEX.high : tot ? TIERHEX.med : TIERHEX.low),
     h ? SHIELD('critical', String(h), TIERHEX.high) : '',
-    fr?.busFactor ? SHIELD('bus factor', `${fr.busFactor} ${fr.risk}`, TIERHEX[RISK_TIER[fr.risk]] || '3ddc84') : '',
+    fr && 'busFactor' in fr ? SHIELD('bus factor', `${fr.busFactor} ${fr.risk}`, TIERHEX[RISK_TIER[fr.risk]] || '3ddc84') : '',
     fr?.singleOwner?.length ? SHIELD('single-owner', String(fr.singleOwner.length), 'e0b341') : '',
     (r.architecture || []).length ? SHIELD('architecture', `${r.architecture.length} facts`, '3ddc84') : '',
     (r.commands || []).length ? SHIELD('commands', String(r.commands.length), '3ddc84') : '',
@@ -277,11 +277,15 @@ function corpusCharts() {
   for (const r of data) for (const f of (r.opsFindings || [])) smithCounts[f.smith] = (smithCounts[f.smith] || 0) + 1
   const findingRows = Object.entries(smithCounts).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: SMITH_LABEL[k] || k, value: v, danger: k === 'secret' }))
   const archRows = data.map(r => ({ label: shortName(r), value: (r.architecture || []).length })).filter(r => r.value).sort((a, b) => b.value - a.value)
-  const busRows = data.filter(r => r.forensics?.busFactor).map(r => ({ label: shortName(r), value: r.forensics.busFactor, danger: r.forensics.busFactor <= 2 })).sort((a, b) => a.value - b.value)
+  const busRows = data.filter(r => r.forensics && 'busFactor' in r.forensics).map(r => ({ label: shortName(r), value: r.forensics.busFactor, danger: r.forensics.busFactor <= 2 })).sort((a, b) => a.value - b.value)
+  const allTop = {}
+  for (const r of data) for (const c of (r.forensics?.topContributors || [])) { const key = c.login || c.name; if (!allTop[key]) allTop[key] = { name: c.name, commits: 0 }; allTop[key].commits += c.commits }
+  const contribRows = Object.values(allTop).sort((a, b) => b.commits - a.commits).slice(0, 8).map(c => ({ label: c.name, value: c.commits }))
   const charts = [
     chart(I.scan, 'Findings by Smith', barChart(findingRows)),
     chart(I.layers, 'Architecture facts per repo', barChart(archRows)),
     busRows.length ? chart(I.bus, 'Bus factor by repo', barChart(busRows)) : '',
+    contribRows.length ? chart(I.users, 'Top contributors across corpus', barChart(contribRows)) : '',
   ].filter(Boolean).join('')
   if (!charts) return ''
   return `<div class="sec"><span class="chip">${I.zap} Signals across the corpus</span><h2>Read from ${data.length} repos</h2><p class="sub">Aggregate facts from every scan — findings by Smith, how much architecture each map captured, and where knowledge concentrates.</p></div><div class="charts">${charts}</div>`
@@ -417,7 +421,7 @@ function repoPage(r) {
     sevDonut ? chart(I.high, 'Findings by severity', sevDonut) : '',
     ownDonut ? chart(I.users, 'Ownership split', ownDonut) : '',
     chart(I.layers, 'Architecture coverage', barChart(archCoverage(r.architecture))),
-    fr?.busFactor ? chart(I.bus, 'Knowledge risk', busFactorBlock(fr)) : '',
+    fr && 'busFactor' in fr ? chart(I.bus, 'Knowledge risk', busFactorBlock(fr)) : '',
     hot.length ? chart(I.bug, 'Fragile hotspots', barChart(hotRows)) : '',
     moduleRows.length ? chart(I.users, 'Module ownership', barChart(moduleRows, { unit: '%' })) : '',
     contribRows.length ? chart(I.users, 'Top contributors', barChart(contribRows)) : '',
@@ -442,7 +446,7 @@ function repoPage(r) {
     </div>
     ${shieldRow(r)}
   </header>
-  ${signals ? `<div class="sec" style="margin-top:1.5rem"><span class="chip">${I.eye} Signals</span><h2>📊 What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, ownership, and churn — read from the repo, not estimated.</p></div>${contributorStrip(fr)}<div class="charts">${signals}</div>` : ''}
+  ${signals || fr?.topContributors?.length ? `<div class="sec" style="margin-top:1.5rem"><span class="chip">${I.eye} Signals</span><h2>📊 What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, ownership, and churn — read from the repo, not estimated.</p></div>${contributorStrip(fr)}<div class="charts">${signals}</div>` : ''}
   <div class="sec"><span class="chip">${I.file} The forge</span><h2>🛠️ The skill it forged</h2><p class="sub">The whole artifact — every file Claude inherits, each finding cited to a real path.</p></div>
   ${skillPanel(r)}
   <div class="verdict ${st === 'failed' ? 'fail' : ''}">${stamp(st === 'failed' ? 'INCOMPLETE' : 'ORACLE PASS')}${esc(r.verdict || 'No verdict recorded.')}</div>
