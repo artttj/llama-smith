@@ -6,7 +6,7 @@
 ![tests](https://img.shields.io/badge/tests-node--test-3ddc84)
 ![runs on Ollama](https://img.shields.io/badge/runs%20on-Ollama-3ddc84)
 
-![Llama Smith — a local model swarm that turns a real repo into an operational Claude Code skill](assets/banner.webp)
+![Llama Smith — a local model swarm that turns a real repo into an operational Claude Code skill](assets/banner-2.webp)
 
 Point it at a repo. A swarm of Ollama models maps how the project is built — its architecture, modules, and data flow — and how it deploys, leaks, and breaks, then forges a Claude Code skill from what they can prove. The next agent that opens the repo acts like it has worked there for a year.
 
