@@ -30,11 +30,11 @@ test('runtime stays full + unverified until probed; penalty applies when verifie
   assert.equal(vibeScore({}, { runtimeVerified: true, runtimePenalty: 19 }).dims.runtime, 6)
 })
 
-test('a rough repo lands in a low tier with an emoji', () => {
+test('a rough repo lands in a low tier', () => {
   const v = vibeScore(
     { anomalies: [{ domain: 'DEPLOY' }, { domain: 'CRON' }, { domain: 'DRIFT' }], exposure: { confidence: 'high' } },
     { lessons: [{ kind: 'faceplant' }, { kind: 'faceplant' }] }
   )
   assert.ok(v.total < 90)
-  assert.ok(['😇', '😎', '😬', '🚑', '💀'].includes(v.emoji))
+  assert.ok(['PRISTINE', 'SOLID', 'SMELLS FUNNY', 'NEEDS HELP', 'DUMPSTER FIRE'].includes(v.label))
 })

@@ -30,8 +30,6 @@ async function main() {
   const args = parseArgs(process.argv)
   const root = resolve(args.path)
   if (!existsSync(root)) { console.error(`no such path: ${root}`); process.exit(1) }
-  if (args.verb === 'diff') { console.log('diff is phase 2 — not implemented'); return }
-
   const opts = { local: args.local, rounds: args.rounds, oracle: args.oracle, scanOnly: args.scanOnly || args.verb === 'scan' }
   const res = await runPipeline(root, opts)
   if (args.json) { console.log(JSON.stringify(res.json, null, 2)); return }

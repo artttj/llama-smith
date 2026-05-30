@@ -29,6 +29,18 @@ const repoFull = r => r.fullName || FULL[r.repo] || r.repo
 const repoStack = r => r.stack || STACK[r.repo] || '?'
 const repoStars = r => r.stars ?? null
 const readAsset = f => { const p = join(LS, 'assets', f); return existsSync(p) ? readFileSync(p, 'utf8').replace(/\n+$/, '') : '' }
+const safeName = s => String(s).replace(/[^a-zA-Z0-9._-]/g, '_')
+const rescanCommand = r => {
+  if (!r) return ''
+  const bin = join(LS, 'llama-smith.mjs')
+  if (r.repoPath) {
+    const q = s => s.includes(' ') ? `"${s}"` : s
+    return `node ${q(bin)} ${q(r.repoPath)}`
+  }
+  if (r.repo) return `cd ../${r.repo} && node llama-smith.mjs .`
+  return ''
+}
+const rescanBtn = cmd => cmd ? `<button type="button" class="rescan-btn" data-cmd="${esc(cmd)}" aria-label="Copy re-scan command to clipboard">⟳ re-scan</button>` : ''
 const HERO_SRC = join(LS, 'assets', 'hero.webp')
 const HAS_HERO = existsSync(HERO_SRC)
 const HERO_DATA = HAS_HERO ? `data:image/webp;base64,${readFileSync(HERO_SRC).toString('base64')}` : ''
@@ -78,6 +90,7 @@ D.forEach(d=>d.querySelector('summary').addEventListener('click',()=>{if(!d.open
 const t=F.querySelector('.md-toggle');if(t)t.addEventListener('click',()=>{const on=F.classList.toggle('rich');t.setAttribute('aria-pressed',on);t.lastChild.textContent=on?' raw markdown':' rich text'});});`
 
 const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(function(g){function sw(){var s=document.createElement('span');s.className=g.className+' broken';s.textContent=g.dataset.initials||'';s.title=g.alt||'';g.replaceWith(s)}g.addEventListener('error',sw);if(g.complete&&g.naturalWidth===0)sw()});`
+const RESCAN_JS = `document.querySelectorAll('.rescan-btn').forEach(b=>{b.addEventListener('click',()=>{const cmd=b.dataset.cmd;try{navigator.clipboard.writeText(cmd)}catch{const ta=document.createElement('textarea');ta.value=cmd;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta)}const t=document.getElementById('toast');t.textContent='Copied — paste in terminal';t.classList.add('show');setTimeout(()=>{t.classList.remove('show')},1500)})});`
 
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -90,7 +103,7 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 
 const brandbar = () => `<a class="brandbar" href="index.html"><span class="bt">llama<b>·</b>smith</span></a>`
 const siteFooter = () => `<footer>
-  <span class="foot-main">🦙 <b>llama·smith</b> — it reads your <b>ops</b>, not your vibes. Every claim cites a file.</span>
+  <span class="foot-main"><b>llama·smith</b> — it does not summarize your repo. It forges operational memory from it.</span>
   <span class="foot-sub">MIT © Artem Iagovdik · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
 </footer>`
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
@@ -118,7 +131,7 @@ const avatarImg = (full, cls = '') => {
 // Allow relative paths and fragments; reject any non-http(s)/mailto scheme
 // (references/*.md, memory.md) point at files that live inside the skill folder,
 // not the dashboard server, so render them as code instead of dead 404 links.
-const mdLink = (text, url) => /^(https?:|mailto:)/i.test(url.trim()) ? `<a href="${url.trim()}" rel="noopener noreferrer">${text}</a>` : `<code>${text}</code>`
+const mdLink = (text, url) => /^(https?:|mailto:)/i.test(url.trim()) ? `<a href="${esc(url.trim())}" rel="noopener noreferrer">${text}</a>` : `<code>${text}</code>`
 const mdInline = s => esc(s)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
   .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -162,15 +175,15 @@ function vibeScore(r) {
   s = Math.max(5, Math.min(100, s))
   const grade = s >= 90 ? 'A' : s >= 80 ? 'B' : s >= 70 ? 'C' : s >= 55 ? 'D' : 'F'
   const tier = s >= 80 ? 'low' : s >= 60 ? 'med' : 'high'
-  const emoji = s >= 80 ? '🟢' : s >= 60 ? '🟠' : '🔴'
-  return { score: s, grade, tier, emoji }
+  return { score: s, grade, tier }
 }
 
 function vibeGauge(r) {
   const { score, grade, tier } = vibeScore(r)
   const R = 52, C = +(2 * Math.PI * R).toFixed(1)
   const off = +(C * (1 - score / 100)).toFixed(1)
-  return `<div class="vibe vibe-${tier}" role="img" aria-label="vibe check score ${score} out of 100, grade ${grade}">
+  const gradeClass = grade.toLowerCase()
+  return `<div class="vibe vibe-${tier} vibe-${gradeClass}" role="img" aria-label="repo grade ${score} out of 100, grade ${grade}">
     <div class="vibe-disc">
       <svg viewBox="0 0 120 120" class="vibe-ring">
         <circle class="vt" cx="60" cy="60" r="${R}"></circle>
@@ -178,11 +191,11 @@ function vibeGauge(r) {
       </svg>
       <div class="vibe-mid"><b>${score}</b><span>${grade}</span></div>
     </div>
-    <div class="vibe-cap">VIBE CHECK</div>
+    <div class="vibe-cap">REPO GRADE</div>
   </div>`
 }
 
-const vibeBadge = r => { const v = vibeScore(r); return `<span class="vibe-badge vibe-${v.tier}" title="vibe check ${v.score}/100, grade ${v.grade}">${v.emoji} ${v.score} ${v.grade}</span>` }
+const vibeBadge = r => { const v = vibeScore(r); return `<span class="vibe-badge vibe-${v.tier} vibe-${v.grade.toLowerCase()}" title="repo grade ${v.score}/100, grade ${v.grade}">${v.score} ${v.grade}</span>` }
 
 // us a username, name initials otherwise.
 function contributorStrip(fr) {
@@ -288,7 +301,7 @@ function corpusCharts() {
     contribRows.length ? chart(I.users, 'Top contributors across corpus', barChart(contribRows)) : '',
   ].filter(Boolean).join('')
   if (!charts) return ''
-  return `<div class="sec"><span class="chip">${I.zap} Signals across the corpus</span><h2>Read from ${data.length} repos</h2><p class="sub">Aggregate facts from every scan — findings by Smith, how much architecture each map captured, and where knowledge concentrates.</p></div><div class="charts">${charts}</div>`
+  return `<div class="sec"><span class="chip">${I.zap} Corpus scan</span><h2>Signals across ${data.length} repos</h2><p class="sub">Aggregate facts from every scan — findings by Smith, how much architecture each map captured, and where knowledge concentrates.</p></div><div class="charts">${charts}</div>`
 }
 
 function glitchFeed() {
@@ -296,7 +309,7 @@ function glitchFeed() {
     .sort((a, b) => (SEVRANK[a.f.severity] ?? 1) - (SEVRANK[b.f.severity] ?? 1))
   return all.slice(0, 6).map((x, i) => {
     const full = repoFull(x.r), ico = I[SMITH_ICON[x.f.smith]] || I.zap
-    return `<a class="glitch sev-${esc(x.f.severity)}" href="${esc(x.r.repo)}.html">
+    return `<a class="glitch sev-${esc(x.f.severity)}" href="${safeName(x.r.repo)}.html">
       <span class="gi">${ico}<span class="idx">${String(i + 1).padStart(2, '0')}</span></span>
       <span><span class="hook">${esc(x.f.text)}</span>
         <span class="cite">${stamp(SMITH_STAMP[x.f.smith] || 'SMITH')}<span class="repo">${esc(full)}</span>${x.f.file ? `<span class="path">${esc(x.f.file)}</span>` : ''}</span>
@@ -306,12 +319,18 @@ function glitchFeed() {
 }
 
 const TYPES = [
-  { ic: 'eye', stamp: 'ARCHITECT-SMITH', name: 'Project architecture', desc: '🧭 What the app is, its modules, data flow, data model, and entrypoints — the matrix of the codebase. Every claim validated against a real file.' },
-  { ic: 'package', stamp: 'STACK-MAP', name: 'Stack & commands', desc: '⚙️ The real stack, entrypoints, and the build/test/deploy commands an agent should run — parsed from manifests and CI, never invented.' },
-  { ic: 'shield', stamp: 'BOUNDARIES', name: 'Do-not-touch', desc: '🚧 Lockfiles, generated output, and env files an agent must not hand-edit — with the reason it must not.' },
-  { ic: 'rocket', stamp: 'OPS-SMITHS', name: 'Operational risk', desc: '🚨 Deploy traps, secret leaks, and cron ghosts. The ops layer hanging off the architecture, not the headline.' },
-  { ic: 'bug', stamp: 'FRAGILITY', name: 'Fragile hotspots', desc: '🔥 Code that churns hard over the last year. Where bugs live. Docs and lockfiles excluded.' },
-  { ic: 'eye', stamp: 'ORACLE', name: 'Two oracles', desc: '🔮 The Validation Oracle re-reads each claim against its file — hallucinations die here. The Self-Improvement Oracle keeps the skill\'s memory.' },
+  { ic: 'eye', stamp: 'ARCHITECT-SMITH', name: 'Project architecture', desc: 'What the app is, its modules, data flow, data model, and entrypoints — the matrix of the codebase. Every claim validated against a real file.' },
+  { ic: 'package', stamp: 'STACK-MAP', name: 'Stack & commands', desc: 'The real stack, entrypoints, and the build/test/deploy commands an agent should run — parsed from manifests and CI, never invented.' },
+  { ic: 'shield', stamp: 'BOUNDARIES', name: 'Do-not-touch', desc: 'Lockfiles, generated output, and env files an agent must not hand-edit — with the reason it must not.' },
+  { ic: 'rocket', stamp: 'OPS-SMITHS', name: 'Operational risk', desc: 'Deploy traps, secret leaks, and cron ghosts. The ops layer hanging off the architecture, not the headline.' },
+  { ic: 'bug', stamp: 'FRAGILITY', name: 'Fragile hotspots', desc: 'Code that churns hard over the last year. Where bugs live. Docs and lockfiles excluded.' },
+  { ic: 'eye', stamp: 'ORACLE', name: 'Two oracles', desc: 'The Validation Oracle re-reads each claim against its file — hallucinations die here. The Self-Improvement Oracle keeps the skill\'s memory.' },
+]
+const STEPS = [
+  { n: '1', label: 'Scan repo', desc: 'Smith swarm reads every file' },
+  { n: '2', label: 'Extract facts', desc: 'Architecture, risks, commands' },
+  { n: '3', label: 'Oracle validates', desc: 'Claims checked against files' },
+  { n: '4', label: 'Skill forged', desc: 'Claude-ready project memory' },
 ]
 
 function card(r) {
@@ -324,7 +343,7 @@ function card(r) {
   const sev = (h + m + l) ? `<div class="sevbar"><div class="track">${bar('h', h)}${bar('m', m)}${bar('l', l)}</div>
       <div class="legend"><span class="h"><span class="d"></span><b>${h}</b> high</span><span class="m"><span class="d"></span><b>${m}</b> med</span><span class="l"><span class="d"></span><b>${l}</b> low</span></div></div>`
     : `<div class="sevbar"><div class="legend"><span>${st === 'failed' ? 'scan failed' : 'no findings — clean'}</span></div></div>`
-  return `<a class="card ${st === 'failed' ? 'glitchfail' : ''}" href="${esc(r.repo)}.html">
+  return `<a class="card ${st === 'failed' ? 'glitchfail' : ''}" href="${safeName(r.repo)}.html">
     <div class="head">${avatarImg(full)}<span class="cn"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</span>${vibeBadge(r)}</div>
     <div class="meta"><span class="pill stack">${esc(repoStack(r))}</span><span class="pill status ${st}">${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</span>${meta}</div>
     <p class="blurb">${esc(repoBlurb(r))}</p>
@@ -347,14 +366,16 @@ function indexPage() {
   const heroArt = HAS_HERO
     ? `<div class="badge-card"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl2"></span><span class="corner br"></span><img class="hero-img" src="${HERO_DATA}" width="620" height="620" alt="llama-smith — a Matrix Agent Smith llama emblem"></div>`
     : `<div class="badge-card" style="padding:2rem 3rem"><span class="bt" style="font-size:2rem;color:var(--green-hot)">llama·smith</span></div>`
+  const busTotal = data.reduce((n, r) => n + (r.forensics?.busFactor || 0), 0)
   const body = `${brandbar()}
   <header class="hero">
     <div class="hero-main">
       ${heroArt}
       <div class="hero-copy">
         <h1 class="slogan">Many Smiths enter.<br>One skill comes out.</h1>
+        <p class="tagline">A README tells you what the code is supposed to do. This remembers what it actually does — and where it breaks.</p>
         <p class="lede">Point llama-smith at any repo. A swarm of Ollama models maps how it's built — <span class="hot">architecture, modules, data flow</span> — and where it deploys, leaks, and breaks, then forges a project skill validated by the Oracle.</p>
-        <div class="taglines"><span>Maps the matrix of a codebase</span><span>Every claim cites a file</span><span>Hallucinations die at the citation step</span><span>Runs on your Ollama, local or cloud</span></div>
+        <div class="taglines"><span>Maps the real repo, not the README</span><span>Every claim cites a file path</span><span>Runs on Ollama, local or cloud</span><span>The Oracle rejects hallucinated skills</span></div>
       </div>
     </div>
   </header>
@@ -363,16 +384,18 @@ function indexPage() {
     <div class="stat hi">${I.eye}<div class="n">${S.arch}</div><div class="l">architecture facts</div></div>
     <div class="stat">${I.scan}<div class="n">${S.findings}</div><div class="l">operational findings</div></div>
     <div class="stat">${I.high}<div class="n">${S.high}</div><div class="l">critical risks</div></div>
+    <div class="stat">${I.bus}<div class="n">${busTotal}</div><div class="l">knowledge bus factor</div></div>
     <div class="stat">${I.file}<div class="n">${S.forged}</div><div class="l">skills forged</div></div>
     <div class="stat">${I.branch}<div class="n">${S.commits.toLocaleString()}</div><div class="l">commits read</div></div>
   </section>
-  <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>🌍 Scanned under real conditions</h2><p class="sub">Click a repo for its vibe score, forensic charts, and the forged skill.</p></div>
+  <div class="steps">${STEPS.map(s => `<div class="step"><span class="step-n">${s.n}</span><span class="step-l">${esc(s.label)}</span><span class="step-d">${esc(s.desc)}</span></div>`).join('')}</div>
+  <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>Scanned under real conditions</h2><p class="sub">Repos the Smith swarm mapped, with repo grade, forensic charts, and the forged skill.</p></div>
   <div class="grid">${famous.map(card).join('')}</div>
   ${wild.length ? `<div class="sec"><span class="chip">${I.eye} In the wild</span><h2>Random low-star repos</h2><p class="sub">Does it stay honest when there's little to find?</p></div><div class="grid">${wild.map(card).join('')}</div>` : ''}
   ${corpusCharts()}
-  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>🧬 The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
+  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
   <div class="types">${TYPES.map(t => `<div class="type"><div class="th">${I[t.ic]}<h3>${esc(t.name)}</h3></div>${stamp(t.stamp)}<p>${esc(t.desc)}</p></div>`).join('')}</div>
-  <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>⚡ The scariest findings, ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
+  <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>Scan evidence — ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
   <div class="glitches">${glitchFeed()}</div>
   ${siteFooter()}`
   return shell('llama-smith · the construct', body)  // shell already includes RAIN
@@ -399,12 +422,8 @@ function skillPanel(r) {
     ${files}</div>`
 }
 
-function repoPage(r) {
-  const full = repoFull(r), [org, name] = full.includes('/') ? full.split('/') : ['', full]
-  const st = statusOf(r)
-  const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
+function repoSignals(r, h, m, l, fr) {
   const hot = r.newCodeHotspots || []
-  const fr = r.forensics
   const soSet = new Set((fr?.singleOwner || []).map(s => s.file))
   const hotRows = hot.slice(0, 6).map(x => ({ label: shortPath(x.file), full: x.file, value: x.edits, danger: soSet.has(x.file) }))
   const moduleRows = (fr?.modules || []).map(mo => ({ label: mo.module + '/', value: Math.round(mo.share * 100), danger: mo.share >= 0.8 }))
@@ -417,7 +436,7 @@ function repoPage(r) {
   const ownDonut = codeN ? donut([
     { label: 'Single-owner', value: so, color: 'var(--high)' }, { label: 'Shared', value: Math.max(0, codeN - so), color: 'var(--low)' },
   ], { centerNum: codeN, centerCap: 'code files' }) : ''
-  const signals = [
+  return [
     sevDonut ? chart(I.high, 'Findings by severity', sevDonut) : '',
     ownDonut ? chart(I.users, 'Ownership split', ownDonut) : '',
     chart(I.layers, 'Architecture coverage', barChart(archCoverage(r.architecture))),
@@ -427,10 +446,19 @@ function repoPage(r) {
     contribRows.length ? chart(I.users, 'Top contributors', barChart(contribRows)) : '',
     couplingRows.length ? chart(I.branch, 'Change coupling', barChart(couplingRows)) : '',
   ].filter(Boolean).join('')
+}
+
+function repoPage(r) {
+  const full = repoFull(r), [org, name] = full.includes('/') ? full.split('/') : ['', full]
+  const st = statusOf(r)
+  const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
+  const fr = r.forensics
+  const signals = repoSignals(r, h, m, l, fr)
   const msec = (ico, label, val) => `<span class="m">${I[ico] || ''}${label} <b>${esc(val)}</b></span>`
+  const cmd = rescanCommand(r)
   const body = `${brandbar()}
   <header class="repo">
-    <a class="back" href="index.html">${I.arrow} all scanned sites</a>
+    <div class="repo-actions"><a class="back" href="index.html">${I.arrow} all scanned sites</a>${rescanBtn(cmd)}</div>
     <div class="repotop">
       <div class="repohead">${avatarImg(full, 'lg')}<div class="rh-text"><div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div><p class="repoblurb">${esc(repoBlurb(r))}</p></div></div>
       ${vibeGauge(r)}
@@ -446,15 +474,16 @@ function repoPage(r) {
     </div>
     ${shieldRow(r)}
   </header>
-  ${signals || fr?.topContributors?.length ? `<div class="sec" style="margin-top:1.5rem"><span class="chip">${I.eye} Signals</span><h2>📊 What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, ownership, and churn — read from the repo, not estimated.</p></div>${contributorStrip(fr)}<div class="charts">${signals}</div>` : ''}
-  <div class="sec"><span class="chip">${I.file} The forge</span><h2>🛠️ The skill it forged</h2><p class="sub">The whole artifact — every file Claude inherits, each finding cited to a real path.</p></div>
+  ${signals || fr?.topContributors?.length ? `<div class="sec" style="margin-top:1.5rem"><span class="chip">${I.eye} Signals</span><h2>What the scan measured</h2><p class="sub">Architecture coverage, knowledge risk, ownership, and churn — read from the repo, not estimated.</p></div>${contributorStrip(fr)}<div class="charts">${signals}</div>` : ''}
+  <div class="sec"><span class="chip">${I.file} Forged skill</span><h2>The skill it forged</h2><p class="sub">The whole artifact — every file Claude inherits, each finding cited to a real path.</p></div>
   ${skillPanel(r)}
   <div class="verdict ${st === 'failed' ? 'fail' : ''}">${stamp(st === 'failed' ? 'INCOMPLETE' : 'ORACLE PASS')}${esc(r.verdict || 'No verdict recorded.')}</div>
+  <div id="toast" role="status" aria-live="polite" class="toast"></div>
   ${siteFooter()}`
-  return shell(`llama-smith · ${full}`, body, FILES_JS)  // shell already includes RAIN
+  return shell(`llama-smith · ${full}`, body, FILES_JS + RESCAN_JS)
 }
 
 mkdirSync(outDir, { recursive: true })
 writeFileSync(join(outDir, 'index.html'), indexPage())
-for (const r of data) writeFileSync(join(outDir, `${r.repo}.html`), repoPage(r))
+for (const r of data) writeFileSync(join(outDir, `${safeName(r.repo)}.html`), repoPage(r))
 process.stdout.write('wrote ' + (data.length + 1) + ' pages\n')
