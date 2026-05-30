@@ -64,7 +64,7 @@ test('forensic charts render on the detail page (chart() receives an object body
     architecture: [{ area: 'modules', claim: 'm', file: 'm.js' }],
   })]
   const b = build(data)
-  assert.ok(b.page('evil').includes('Findings by Severity'), 'forensic chart card renders on the detail page')
+  assert.ok(b.page('evil').includes('Findings by severity'), 'forensic chart card renders on the detail page')
   rmSync(b.tmp, { recursive: true, force: true })
 })
 

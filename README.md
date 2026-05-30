@@ -8,7 +8,7 @@
 
 Point it at a repo. A swarm of Ollama models maps how the project is built — its architecture, modules, and data flow — and how it deploys, leaks, and breaks, then forges a Claude Code skill from what they can prove. The next agent that opens the repo acts like it has worked there for a year.
 
-Models run through your own Ollama. Cloud models by default; `--local` keeps everything on your machine.
+The swarm runs on your own Ollama, never on Claude Code's model. Cloud models by default, or `--local` to run models you've pulled locally — no cloud account needed.
 
 ```
 Many Smiths enter.
@@ -66,7 +66,7 @@ Each repo gets its own page, and the forged skill is the headline, not something
 
 Under the skill is the evidence it was built from. Findings by severity and the single-owner/shared split are donut charts; bus factor, hot files, architecture coverage, and module ownership are bars. Each repo carries a risk score (A–F) from its validated findings, ownership concentration, and how much of the architecture the Smiths mapped. You can delete a report straight from the dashboard.
 
-Color means something here: green is validated, red is high severity, amber is a warning, cyan is metadata. Every page inlines its own CSS and hero art, so a single `.html` file opens anywhere with nothing else to ship.
+Colors are semantic: green validated, red high severity, amber warning, cyan metadata. Each page inlines its own CSS and hero image, so a single `.html` file works anywhere.
 
 ## 🔌 Install (Claude Code plugin)
 
@@ -88,7 +88,7 @@ The plugin adds four commands, so you never type raw `node`:
 - `/llama-smith-dashboard` — build and serve the forensic dashboard on localhost
 - `/llama-smith-diff <repo> [--base <ref>] [--head <ref>]` — scan only what a PR changed
 
-You need Node 20+ and Ollama running. Cloud models by default; add `--local` to keep everything on your machine.
+You need Node 20+ and Ollama running.
 
 In cloud mode the swarm sends file contents to your cloud Ollama, including config and `.env` files the secret Smith reads. Run it only on repos you own or are authorized to scan, and use `--local` when the contents must not leave your machine.
 

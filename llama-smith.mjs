@@ -9,7 +9,7 @@ import { execFile, execFileSync } from 'node:child_process'
 import { runPipeline } from './lib/pipeline.mjs'
 import { appendLesson } from './lib/lessons-store.mjs'
 
-export const VERSION = '0.3.0'
+export const VERSION = '1.0.0'
 const VERBS = new Set(['run', 'scan', 'forge', 'diff', 'serve'])
 
 export function parseArgs(argv) {
@@ -59,7 +59,7 @@ function repoIdentity(root) {
     try { const j = JSON.parse(readFileSync(join(root, f), 'utf8')); if (!blurb && j.description) blurb = String(j.description); if (!fullName && j.name) fullName = String(j.name) } catch {}
   }
   if (!fullName) fullName = basename(root)
-  if (!blurb) { try { const t = readFileSync(join(root, 'Cargo.toml'), 'utf8').match(/^description\s*=\s*"([^"]+)"/m); if (t) blurb = t[1] } catch {} }
+  if (!blurb) { for (const f of ['Cargo.toml', 'pyproject.toml']) { try { const t = readFileSync(join(root, f), 'utf8').match(/^description\s*=\s*"([^"]+)"/m); if (t) { blurb = t[1]; break } } catch {} } }
   try { commits = parseInt(execFileSync('git', ['-C', root, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim(), 10) || 0 } catch {}
   return { fullName, url, commits, blurb }
 }

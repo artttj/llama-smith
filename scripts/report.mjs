@@ -65,7 +65,7 @@ requestAnimationFrame(()=>setTimeout(f,55))})();}`
 
 const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(function(g){function sw(){var s=document.createElement('span');s.className=g.className+' broken';s.textContent=g.dataset.initials||'';s.title=g.alt||'';g.replaceWith(s)}g.addEventListener('error',sw);if(g.complete&&g.naturalWidth===0)sw()});`
 const COPY_JS = `document.querySelectorAll('.copy-skill').forEach(function(b){b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.skill||'');var t=b.textContent;b.textContent='Copied!';setTimeout(function(){b.textContent=t},1500)})});`
-const TECH_JS = `document.querySelectorAll('.tech-more').forEach(function(b){b.addEventListener('click',function(){var h=b.previousElementSibling;if(h&&h.classList.contains('tech-hidden'))h.style.display='inline';b.remove()})});`
+const TECH_JS = `document.querySelectorAll('.tech-more').forEach(function(b){b.addEventListener('click',function(){var h=b.previousElementSibling;if(h&&h.classList.contains('tech-hidden'))h.style.display='contents';b.remove()})});`
 const TRASH_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
 const DELETE_JS = `document.querySelectorAll('.delete-report').forEach(function(b){b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var repo=b.dataset.repo;if(!confirm('Delete the report for '+repo+'? The forged skill inside the repo is not affected.'))return;b.disabled=true;b.textContent='Deleting…';fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'llama-smith'},body:JSON.stringify({repo:repo})}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(){var c=b.closest('[data-report-card]');if(c){c.remove()}else{location.href='index.html'}}).catch(function(){b.disabled=false;b.textContent='Delete failed — retry'})})});`
 
@@ -97,9 +97,10 @@ const heroSection = () => {
   return `<div class="hero">
     ${heroImg}
     <div class="hero-content">
-      <h1 class="display-xl">Many <span class="hl">Smiths</span> enter.<br><span class="hl">One</span> skill comes out.<br><span class="hl">The Oracle</span> keeps it honest.</h1>
-      <p class="quote" style="margin-top:1.5rem">It does not summarize your repo. It forges operational memory from it.</p>
-      <div class="hero-cmd"><span class="hero-cmd-prompt">&rsaquo;</span><span class="cmd-rainbow">/llama-smith ./your-repo</span></div>
+      <h1 class="display-xl">Many <span class="hl">Smiths</span> enter.<br><span class="hl-bright">One skill</span> comes out.</h1>
+      <p class="hero-trust">The <span class="hl">Oracle</span> verifies every claim.</p>
+      <p class="hero-lede">A local model swarm that turns a real repo into an operational Claude Code skill.</p>
+      <div class="hero-cmd"><span class="hero-cmd-prompt">&rsaquo;</span><span class="cmd-text">/llama-smith ./your-repo</span></div>
       <div class="hero-proof">
         <span class="proof-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -107,11 +108,7 @@ const heroSection = () => {
         </span>
         <span class="proof-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><polyline points="13 2 13 9 20 9"/></svg>
-          File-path cited
-        </span>
-        <span class="proof-chip">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/></svg>
-          Ollama local/cloud
+          File paths cited
         </span>
         <span class="proof-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -124,12 +121,12 @@ const heroSection = () => {
     <div class="pipeline-step">
       <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
       <span class="step-label">Scan repo</span>
-      <span class="step-desc">Many agents map structure</span>
+      <span class="step-desc">Agents map architecture</span>
     </div>
     <div class="pipeline-step">
       <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><polyline points="14 2 14 9 20 9"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       <span class="step-label">Extract facts</span>
-      <span class="step-desc">Architecture &amp; risks</span>
+      <span class="step-desc">Every claim cites files</span>
     </div>
     <div class="pipeline-step">
       <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.06 12.34a1.7 1.7 0 0 1 0-.68 10.94 10.94 0 0 1 19.88 0 1.7 1.7 0 0 1 0 .68 10.94 10.94 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>
@@ -139,7 +136,7 @@ const heroSection = () => {
     <div class="pipeline-step">
       <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 9 21 9"/><path d="m9 15 2 2 4-4"/></svg>
       <span class="step-label">Skill forged</span>
-      <span class="step-desc">Claude-ready output</span>
+      <span class="step-desc">Claude-ready memory</span>
     </div>
   </div>`
 }
@@ -147,9 +144,11 @@ const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness ==
 
 function repoBlurb(r, full = false) {
   const arch = r.architecture || []
-  const pick = arch.find(a => a.area === 'overview') || arch.find(a => a.area === 'abstractions') || arch.find(a => a.area === 'modules') || arch.find(a => a.area === 'entrypoints')
+  const overview = (arch.find(a => a.area === 'overview') || {}).claim
+  const pick = overview || (arch.find(a => a.area === 'abstractions') || {}).claim || (arch.find(a => a.area === 'modules') || {}).claim || (arch.find(a => a.area === 'entrypoints') || {}).claim
+  const manifest = String(r.blurb || '').trim()
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
-  const spine = String(r.blurb || (pick && pick.claim) || repoStack(r)).replace(/\s*\.\s*$/, '')
+  const spine = String((manifest.length >= 40 ? manifest : (overview || manifest || pick)) || repoStack(r)).replace(/\s*\.\s*$/, '')
   if (statusOf(r) === 'failed') return `${spine}. The construct could not read it.`
   const counts = [h && `${h} high`, m && `${m} med`, l && `${l} low`].filter(Boolean).join(', ')
   if (!counts) return `${spine}. Clean scan — no operational risk found.`
@@ -338,7 +337,7 @@ ${heroSection()}
   <div class="grid">${wild.map(card).join('')}</div>` : ''}
 </section>
 ${siteFooter()}`
-  return shell('llama-smith · the construct', body)
+  return shell('llama-smith · the construct', body, DELETE_JS)
 }
 
 function skillPanel(r) {
@@ -362,88 +361,98 @@ function skillPanel(r) {
   const lines = f => (f.body.match(/\n/g) || []).length + 1
 
   const fileDesc = {
-    'CLAUDE.md': 'Primary skill instructions for Claude Code',
-    'AGENTS.md': 'Agent behavior and orchestration rules',
-    'project-memory.md': 'Self-learning memory anchor',
+    'SKILL.md': 'Entry point — what to read first',
+    'CLAUDE.md': 'Primary instructions for Claude Code',
+    'AGENTS.md': 'Cross-tool map for Cursor, opencode, Codex',
     'memory.md': 'Self-learning memory — grows as you correct it',
-    'architecture.md': 'Project structure and module map',
-    'operations.md': 'Deploy, secrets, and runtime risks',
-    'risks.md': 'Known vulnerabilities and fragile hotspots',
-    'SKILL.md': 'Entry point with file references',
+    'project-memory.md': 'Self-learning memory anchor',
+    'architecture.md': 'Modules, data flow, and data model',
+    'deploy.md': 'Deploy and rollback risk',
+    'jobs.md': 'Scheduled jobs and cron',
+    'secrets.md': 'Secret handling and exposure',
+    'operations.md': 'Deploy, secrets, and runtime risk',
+    'risks.md': 'Known vulnerabilities and fragile spots',
+    'fragility.md': 'Churn hotspots, single-owner flagged',
+    'forensics.md': 'Bus factor, ownership, module map',
+    'commands.md': 'Real build, test, and deploy commands',
+    'boundaries.md': 'Files an agent must not hand-edit',
   }
 
-  const fileCards = built.files.map((f) => {
-    const lineCount = lines(f)
-    const fileName = f.path.split('/').pop()
-    const desc = fileDesc[fileName] || 'Generated skill component'
-    const previewId = `preview-${esc(fileName.replace(/\./g, '-'))}`
+  const groupOf = name => {
+    if (/^(SKILL|CLAUDE|AGENTS)\.md$/.test(name) || /memory\.md$/.test(name)) return 'Core artifact'
+    if (/architecture\.md$/.test(name)) return 'Architecture'
+    if (/(risks|fragility|forensics|secrets)\.md$/.test(name)) return 'Risk & forensics'
+    if (/(deploy|jobs|commands|boundaries|operations)\.md$/.test(name)) return 'Operations'
+    return 'References'
+  }
+  const GROUP_ORDER = ['Core artifact', 'Architecture', 'Risk & forensics', 'Operations', 'References']
 
-    return `
-    <div style="padding:0.875rem;background:var(--bg);border-radius:var(--r-sm);border:1px solid var(--line-subtle);cursor:pointer;transition:all 0.15s"
-         onmouseover="this.style.borderColor='var(--green-brand)';this.style.background='var(--bg-elevated)'"
-         onmouseout="this.style.borderColor='var(--line-subtle)';this.style.background='var(--bg)'"
-         onclick="document.getElementById('${previewId}').style.display=document.getElementById('${previewId}').style.display==='none'?'block':'none'">
-      <div style="display:flex;align-items:center;gap:0.75rem">
-        <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--green-brand);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.path)}</span>
-        <span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap">${lineCount} lines</span>
-        <span class="badge badge-grade badge-grade-a" style="font-size:0.65rem;padding:0.15rem 0.4rem">forged</span>
-      </div>
-      <p style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-secondary);line-height:1.4">${esc(desc)}</p>
+  const fileRow = f => {
+    const desc = fileDesc[f.path.split('/').pop()] || 'Generated skill component'
+    return `<details class="artifact-file">
+      <summary>
+        <span class="artifact-file-main">
+          <span class="artifact-file-name">${esc(f.path)}</span>
+          <span class="artifact-file-desc">${esc(desc)}</span>
+        </span>
+        <span class="artifact-file-lines">${lines(f)} lines</span>
+        <span class="badge badge-grade badge-grade-a artifact-file-badge">forged</span>
+      </summary>
+      <pre class="artifact-file-pre"><code>${esc(f.body)}</code></pre>
+    </details>`
+  }
 
-      <div id="${previewId}" style="display:none;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--line-subtle)">
-        <pre style="font-size:0.75rem;line-height:1.6;color:var(--text-secondary);background:var(--surface);padding:0.75rem;border-radius:var(--r-xs);max-height:60vh;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0"><code>${esc(f.body)}</code></pre>
-      </div>
-    </div>`
-  }).join('')
+  const byGroup = {}
+  for (const f of built.files) { const g = groupOf(f.path.split('/').pop()); (byGroup[g] || (byGroup[g] = [])).push(f) }
+  const groupedFiles = GROUP_ORDER.filter(g => byGroup[g]).map(g =>
+    `<div class="artifact-group">
+      <div class="artifact-group-label">${esc(g)}</div>
+      ${byGroup[g].map(fileRow).join('')}
+    </div>`).join('')
 
   const totalLines = built.files.reduce((sum, f) => sum + lines(f), 0)
   const repoName = repoFull(r)
+  const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
+  const findings = h + m + l
+  const archFacts = archCoverage(r.architecture).reduce((s, a) => s + a.value, 0)
 
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.25rem">
-    <div class="panel" style="padding:1.25rem;display:flex;flex-direction:column">
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
-        <span style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--green-brand)">${I.repo}</span>
-        <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Artifact Summary</span>
+  const inside = [
+    ['Architecture facts', archFacts],
+    ['Entrypoints', (r.entrypoints || []).length],
+    ['Commands', (r.commands || []).length],
+    ['Boundaries', (r.boundaries || []).length],
+  ].filter(([, v]) => v > 0)
+  const insideRows = inside.map(([label, v]) => `<div class="artifact-inside-row"><span>${label}</span><b>${v}</b></div>`).join('')
+
+  const statBox = (value, label, color) => `<div class="artifact-stat"><div class="artifact-stat-value" style="color:${color}">${value}</div><div class="artifact-stat-label">${label}</div></div>`
+
+  return `<div class="artifact-grid">
+    <div class="panel artifact-meta">
+      <div class="artifact-cap"><span class="artifact-cap-ico" style="color:var(--green-brand)">${I.repo}</span><span>Artifact summary</span></div>
+      <div class="artifact-name">${esc(built.name)}/</div>
+
+      <div class="artifact-stats">
+        ${statBox(built.files.length, 'Files', 'var(--green-brand)')}
+        ${statBox(totalLines.toLocaleString(), 'Lines', 'var(--cyan)')}
+        ${statBox(findings, 'Findings', findings ? 'var(--amber)' : 'var(--text-muted)')}
       </div>
 
-      <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary);font-family:var(--font-mono);margin-bottom:0.25rem">${esc(built.name)}/</div>
+      ${insideRows ? `<div class="artifact-inside">${insideRows}</div>` : ''}
 
-      <div style="display:flex;gap:0.75rem;margin:1rem 0">
-        <div style="text-align:center;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm);flex:1">
-          <div style="font-size:1.25rem;font-weight:700;color:var(--green-brand);font-family:var(--font-mono)">${built.files.length}</div>
-          <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Files</div>
-        </div>
-        <div style="text-align:center;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm);flex:1">
-          <div style="font-size:1.25rem;font-weight:700;color:var(--cyan);font-family:var(--font-mono)">${totalLines.toLocaleString()}</div>
-          <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Lines</div>
-        </div>
+      <div class="artifact-status">
+        <div class="artifact-status-row"><span class="dot" style="background:var(--green-brand)"></span><span><b>Oracle validated</b> — every claim checked against its file</span></div>
+        <div class="artifact-status-row"><span class="dot" style="background:var(--amber)"></span><span><b>Self-learning memory</b> — folds in your corrections each run</span></div>
       </div>
 
-      <div style="margin-top:auto">
-        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm);margin-bottom:0.5rem">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--green-brand);flex-shrink:0"></span>
-          <span style="font-size:0.8rem;color:var(--text-secondary)"><b style="color:var(--text-primary);font-weight:600">Oracle validated</b> — every claim checked against its file</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;background:var(--bg);border-radius:var(--r-sm)">
-          <span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></span>
-          <span style="font-size:0.8rem;color:var(--text-secondary)"><b style="color:var(--text-primary);font-weight:600">Self-learning memory</b> — folds in your corrections each run</span>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:0.5rem;margin-top:1rem">
-        <button class="btn btn-primary copy-skill" style="flex:1;font-size:0.8rem" data-skill="${esc(built.name)}">Copy skill name</button>
-        <a class="btn btn-secondary" style="flex:1;font-size:0.8rem;text-align:center" href="https://github.com/${esc(repoName)}" target="_blank" rel="noopener">View repo</a>
+      <div class="artifact-actions">
+        <button class="btn btn-primary copy-skill" data-skill="${esc(built.name)}">Copy skill name</button>
+        <a class="btn btn-secondary" href="https://github.com/${esc(repoName)}" target="_blank" rel="noopener">View repo</a>
       </div>
     </div>
 
-    <div class="panel" style="padding:1.25rem">
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem">
-        <span style="display:flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--cyan)">${I.file}</span>
-        <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Generated Files</span>
-        <span style="margin-left:auto;font-size:0.75rem;color:var(--text-muted)">Click to preview</span>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:0.625rem">${fileCards}</div>
+    <div class="panel artifact-files">
+      <div class="artifact-cap"><span class="artifact-cap-ico" style="color:var(--cyan)">${I.file}</span><span>Generated files</span><span class="artifact-files-hint">Click any file to preview</span></div>
+      <div class="artifact-groups">${groupedFiles}</div>
     </div>
   </div>`
 }
@@ -470,6 +479,16 @@ function donut(segments, { center, sub } = {}) {
   </div>`
 }
 
+// Segmented horizontal bar — proportions read faster than a donut for 2-3 parts.
+// Reuses the .sevbar component that the index cards already ship.
+function segbar(segments, { unit = '' } = {}) {
+  const shown = segments.filter(s => s.value > 0)
+  const sum = shown.reduce((s, x) => s + x.value, 0) || 1
+  const track = shown.map(s => `<span class="sevbar-seg" style="background:${s.color};width:${(s.value / sum) * 100}%"></span>`).join('')
+  const legend = shown.map(s => `<span class="sevbar-item"><span class="sevbar-dot" style="background:${s.color}"></span>${esc(s.label)} <b>${s.value.toLocaleString()}${unit}</b></span>`).join('')
+  return `<div class="sevbar" style="margin-top:0.75rem" role="img" aria-label="segmented bar"><div class="sevbar-track">${track}</div><div class="sevbar-legend">${legend}</div></div>`
+}
+
 function repoSignals(r, h, m, l, fr) {
   const hot = r.newCodeHotspots || []
   const soSet = new Set((fr?.singleOwner || []).map(s => s.file))
@@ -480,15 +499,15 @@ function repoSignals(r, h, m, l, fr) {
   const cards = []
 
   if (totFindings > 0) {
-    const severityBar = donut([
+    const severityBar = segbar([
       { value: h, color: 'var(--red)', label: 'High' },
       { value: m, color: 'var(--amber)', label: 'Medium' },
       { value: l, color: 'var(--green-brand)', label: 'Low' },
-    ], { center: totFindings, sub: 'findings' })
+    ])
 
-    const explanation = h > 0 ? `${h} high-priority issues need review.` : totFindings > 0 ? `${totFindings} findings, none critical.` : 'No findings detected.'
+    const explanation = h > 0 ? `${h} high-priority issue${h > 1 ? 's' : ''} need review.` : `${totFindings} findings, none critical.`
 
-    cards.push(chart(I.high, 'Findings by Severity', {
+    cards.push(chart(I.high, 'Findings by severity', {
       bigNumber: `${totFindings}`,
       subtitle: 'total findings',
       explanation,
@@ -500,12 +519,12 @@ function repoSignals(r, h, m, l, fr) {
     const sharedFiles = Math.max(0, codeN - so)
     const riskText = so > 10 ? `${so} files concentrate ownership risk.` : so > 0 ? 'Low ownership concentration.' : 'Ownership well distributed.'
 
-    const splitBar = donut([
+    const splitBar = segbar([
       { value: so, color: 'var(--amber)', label: 'Single-owner' },
       { value: sharedFiles, color: 'var(--green-brand)', label: 'Shared' },
-    ], { center: codeN, sub: 'files' })
+    ])
 
-    cards.push(chart(I.users, 'Ownership Split', {
+    cards.push(chart(I.users, 'Ownership concentration', {
       bigNumber: `${codeN}`,
       subtitle: 'code files',
       explanation: riskText,
@@ -528,10 +547,10 @@ function repoSignals(r, h, m, l, fr) {
       </div>`
     }).join('')
 
-    cards.push(chart(I.layers, 'Architecture Coverage', {
+    cards.push(chart(I.layers, 'Architecture map coverage', {
       bigNumber: `${totalArch}`,
       subtitle: 'facts captured',
-      explanation: 'Map of modules, data flow, and entrypoints.',
+      explanation: `${totalArch} facts across ${archRows.length} of 6 architecture dimensions.`,
       body: `<div style="margin-top:0.75rem">${archBars}</div>`
     }))
   }
@@ -573,10 +592,10 @@ function repoSignals(r, h, m, l, fr) {
       </div>`
     }).join('')
 
-    cards.push(chart(I.bug, 'Fragile Hotspots', {
+    cards.push(chart(I.bug, 'Highest churn hotspots', {
       bigNumber: `${hot.length}`,
       subtitle: 'hot files',
-      explanation: 'Files with high churn over last year.',
+      explanation: 'Files with the most edits over the last year.',
       body: `<div style="margin-top:0.75rem">${hotBars}</div>`
     }))
   }
@@ -594,7 +613,7 @@ function repoSignals(r, h, m, l, fr) {
     const highConcentration = moduleRows.filter(m => m.danger).length
     const explanation = highConcentration > 0 ? `${highConcentration} modules with >80% ownership concentration.` : 'Module ownership well distributed.'
 
-    cards.push(chart(I.users, 'Module Ownership', {
+    cards.push(chart(I.users, 'Ownership by module', {
       bigNumber: `${moduleRows.length}`,
       subtitle: 'modules',
       explanation,
@@ -615,12 +634,11 @@ function repoSignals(r, h, m, l, fr) {
     </div>`).join('')
 
     const totalContribs = contribRows.reduce((sum, c) => sum + c.value, 0)
+    const allContribs = fr.contributors || contribRows.length
 
-    cards.push(chart(I.users, 'Top Contributors', {
-      bigNumber: `${fr.contributors || contribRows.length}`,
-      subtitle: 'contributors',
-      explanation: `${totalContribs.toLocaleString()} commits from top ${contribRows.length}.`,
-      body: `<div style="margin-top:0.75rem">${contribBars}</div>`
+    cards.push(chart(I.users, 'Top contributors', {
+      explanation: `${totalContribs.toLocaleString()} commits from the top ${contribRows.length}${allContribs > contribRows.length ? ` of ${allContribs.toLocaleString()}` : ''} contributors.`,
+      body: `<div style="margin-top:0.25rem">${contribBars}</div>`
     }))
   }
 
