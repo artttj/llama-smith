@@ -12,7 +12,7 @@ export const VERSION = '0.2.0'
 const VERBS = new Set(['run', 'scan', 'forge', 'diff'])
 
 export function parseArgs(argv) {
-  const args = { verb: 'run', path: '.', local: false, scanOnly: false, json: false, rounds: 2, oracle: true, missed: null }
+  const args = { verb: 'run', path: '.', local: false, scanOnly: false, json: false, rounds: 2, oracle: true, missed: null, incremental: false }
   let verbSet = false
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
@@ -21,6 +21,7 @@ export function parseArgs(argv) {
     else if (a === '--json') args.json = true
     else if (a === '--no-oracle') args.oracle = false
     else if (a === '--missed' && i + 1 < argv.length && !argv[i + 1].startsWith('-')) args.missed = argv[++i]
+    else if (a === '--incremental' || a === '--inc') args.incremental = true
     else if (a === '--rounds' && i + 1 < argv.length) args.rounds = Math.max(1, parseInt(argv[++i], 10) || 2)
     else if (!verbSet && VERBS.has(a)) { args.verb = a; verbSet = true }
     else if (!a.startsWith('-')) args.path = a
@@ -37,7 +38,7 @@ async function main() {
     console.log(`recorded (missed) — ${lessons.length} lesson(s) in ${root}/.smith/lessons.json`)
     return
   }
-  const opts = { local: args.local, rounds: args.rounds, oracle: args.oracle, scanOnly: args.scanOnly || args.verb === 'scan' }
+  const opts = { local: args.local, rounds: args.rounds, oracle: args.oracle, scanOnly: args.scanOnly || args.verb === 'scan', incremental: args.incremental }
   const res = await runPipeline(root, opts)
   if (args.json) { console.log(JSON.stringify(res.json, null, 2)); return }
 
