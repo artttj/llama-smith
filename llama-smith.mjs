@@ -9,7 +9,7 @@ import { execFile, execFileSync } from 'node:child_process'
 import { runPipeline } from './lib/pipeline.mjs'
 import { appendLesson } from './lib/lessons-store.mjs'
 
-export const VERSION = '1.0.0'
+export const VERSION = '1.1.0'
 const VERBS = new Set(['run', 'scan', 'forge', 'diff', 'serve'])
 
 export function parseArgs(argv) {

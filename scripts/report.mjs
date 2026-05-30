@@ -53,6 +53,8 @@ const I = {
   layers: SVG('<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'),
 }
 
+const EXT_ICON = '<svg class="ext-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>'
+
 const CSS = readAsset("dashboard-v2.css")  // editable in assets/dashboard-v2.css, inlined at build
 
 const RAIN = `const c=document.getElementById('rain');
@@ -80,7 +82,7 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 
 const brandbar = () => `<header class="header">
   <a class="brand" href="index.html">
-    llama<span>·</span>smith
+    Llama<span>·</span>Smith
   </a>
   <nav class="nav-actions">
     <a href="https://github.com/artttj/llama-smith" class="btn btn-sm btn-secondary" target="_blank" rel="noopener">GitHub</a>
@@ -88,7 +90,7 @@ const brandbar = () => `<header class="header">
   </nav>
 </header>`
 const siteFooter = () => `<footer class="footer">
-  <span class="footer-main"><b>llama·smith</b> — it does not summarize your repo. It forges operational memory from it.</span>
+  <span class="footer-main"><b>Llama Smith</b> — it does not summarize your repo. It forges operational memory from it.</span>
   <span class="footer-sub">MIT © Artem Iagovdik · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
 </footer>`
 
@@ -99,7 +101,7 @@ const heroSection = () => {
     <div class="hero-content">
       <h1 class="display-xl">Many <span class="hl">Smiths</span> enter.<br><span class="hl-bright">One skill</span> comes out.</h1>
       <p class="hero-trust">The <span class="hl">Oracle</span> verifies every claim.</p>
-      <p class="hero-lede">A local model swarm that turns a real repo into an operational Claude Code skill.</p>
+      <p class="hero-lede">A model swarm — cloud by default, local when you need it — that turns a real repo into an operational Claude Code skill.</p>
       <div class="hero-cmd"><span class="hero-cmd-prompt">&rsaquo;</span><span class="cmd-text">/llama-smith ./your-repo</span></div>
       <div class="hero-proof">
         <span class="proof-chip">
@@ -167,16 +169,20 @@ const avatarImg = (full, cls = '') => {
 
 const AREA_LABELS = { overview: 'Overview', modules: 'Modules', dataflow: 'Data flow', datamodel: 'Data model', entrypoints: 'Entrypoints', abstractions: 'Concepts' }
 
-const chart = (icon, title, { bigNumber, subtitle, explanation, body, status, accent } = {}) => (body ? `<div class="panel stat-card">
-  <div class="stat-cap"><span class="stat-cap-ico">${icon}</span>${esc(title)}</div>
+const chart = (icon, title, { bigNumber, subtitle, explanation, body, status, accent, href } = {}) => {
+  if (!body) return ''
+  const inner = `<div class="stat-cap"><span class="stat-cap-ico">${icon}</span>${esc(title)}${href ? '<span class="stat-jump">see all &darr;</span>' : ''}</div>
   ${bigNumber != null || status ? `<div class="stat-head">
     ${bigNumber != null ? `<span class="stat-num"${accent ? ` style="color:${accent}"` : ''}>${bigNumber}</span>` : ''}
     ${status ? `<span class="stat-chip" style="color:${status.color};border-color:${status.color}">${esc(status.label)}</span>` : ''}
     ${subtitle ? `<span class="stat-sub">${esc(subtitle)}</span>` : ''}
   </div>` : ''}
   ${explanation ? `<p class="stat-exp">${esc(explanation)}</p>` : ''}
-  <div class="stat-body">${body}</div>
-</div>` : '')
+  <div class="stat-body">${body}</div>`
+  return href
+    ? `<a class="panel stat-card stat-card-link" href="${esc(href)}">${inner}</a>`
+    : `<div class="panel stat-card">${inner}</div>`
+}
 
 function vibeScore(r) {
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
@@ -547,6 +553,7 @@ function repoSignals(r, h, m, l, fr) {
       status: h ? { label: `${h} high`, color: CONCERN.critical } : { label: 'no critical', color: CONCERN.healthy },
       explanation: h > 0 ? `${h} high-priority issue${h > 1 ? 's' : ''} need review.` : `${totFindings} findings, none critical.`,
       body: severityBar,
+      href: '#findings',
     }))
   }
 
@@ -663,6 +670,30 @@ function repoSignals(r, h, m, l, fr) {
   return cards.join('')
 }
 
+// The actual operational issues, not just a count — severity rail, finding text, cited file.
+function findingsList(r) {
+  const RANK = { high: 0, medium: 1, low: 2 }
+  const SEV = { high: 'High', medium: 'Medium', low: 'Low' }
+  const ops = (r.opsFindings || []).slice().sort((a, b) => (RANK[a.severity] ?? 3) - (RANK[b.severity] ?? 3))
+  if (!ops.length) return ''
+  const rows = ops.map(f => {
+    const sev = f.severity || 'low'
+    const file = f.file && f.file !== 'unknown' ? f.file : ''
+    return `<div class="evidence evidence-${esc(sev)}">
+      <span class="evidence-rail"></span>
+      <div class="evidence-body">
+        <div class="evidence-header">
+          <span class="badge badge-${esc(sev)}">${esc(SEV[sev] || sev)}</span>
+          ${f.smith ? `<span class="meta">${esc(f.smith)}</span>` : ''}
+          ${file ? `<span class="path-chip">${esc(file)}</span>` : `<span class="meta">unknown location</span>`}
+        </div>
+        <div class="evidence-text">${esc(f.text || '')}</div>
+      </div>
+    </div>`
+  }).join('')
+  return `<div style="display:flex;flex-direction:column;gap:0.75rem">${rows}</div>`
+}
+
 function repoPage(r) {
   const full = repoFull(r), [org, name] = full.includes('/') ? full.split('/') : ['', full]
   const st = statusOf(r)
@@ -702,9 +733,9 @@ function repoPage(r) {
         ${avatarImg(full)}
         <div style="min-width:0">
           <div style="display:flex;align-items:center;gap:0.625rem;flex-wrap:wrap">
-            <div style="font-size:1.5rem;font-weight:700;color:var(--text-primary);letter-spacing:-0.02em;font-family:var(--font-display)">
-              ${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}
-            </div>
+            ${r.url
+              ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" class="repo-title-link" style="font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;font-family:var(--font-display)" title="View ${esc(full)} on GitHub">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}${EXT_ICON}</a>`
+              : `<div style="font-size:1.5rem;font-weight:700;color:var(--text-primary);letter-spacing:-0.02em;font-family:var(--font-display)" title="Cloned locally — no public remote">${esc(org)}${org ? '<span style="color:var(--text-muted)">/</span>' : ''}${esc(name)}</div>`}
             <div class="score-ring" style="border-color:${gradeColor}" title="Risk grade ${grade.grade} — score ${grade.score}/100 from validated risk, ownership, and coverage" aria-label="Risk grade ${grade.grade}, score ${grade.score} of 100">
               <span class="score-ring-num">${grade.score}</span>
               <span class="score-ring-grade" style="color:${gradeColor}">${grade.grade}</span>
@@ -749,6 +780,16 @@ function repoPage(r) {
       <summary>Show all readings</summary>
       <div class="grid" style="margin-top:1.25rem">${signals}</div>
     </details>
+  </div>` : ''}
+
+  ${(r.opsFindings || []).length ? `
+  <div id="findings" style="margin-top:2.5rem;scroll-margin-top:1.5rem">
+    <div style="margin-bottom:1.25rem">
+      <span style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Operational Findings</span>
+      <h2 style="margin-top:0.375rem;font-size:1.25rem;font-weight:600;color:var(--text-primary)">What the swarm flagged</h2>
+      <p style="margin-top:0.375rem;font-size:0.9rem;color:var(--text-secondary)">${h} high, ${m} medium, ${l} low — each cited to a real file and validated by the Oracle.</p>
+    </div>
+    ${findingsList(r)}
   </div>` : ''}
 
   <div style="margin-top:2.5rem;display:flex;justify-content:flex-end">

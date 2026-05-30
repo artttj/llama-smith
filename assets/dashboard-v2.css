@@ -115,7 +115,7 @@ canvas#rain {
   position: fixed;
   inset: 0;
   z-index: 0;
-  opacity: 0.035;
+  opacity: 0.09;
   pointer-events: none;
   mask-image: radial-gradient(
     ellipse 80% 80% at 50% 50%,
@@ -837,6 +837,11 @@ body::after {
 
 .stat-body { margin-top: 0.1rem; }
 
+/* Clickable stat card — jumps to the findings list */
+.stat-card-link { text-decoration: none; color: inherit; cursor: pointer; }
+.stat-card-link:hover { border-color: var(--green-brand); box-shadow: var(--shadow), 0 0 16px var(--green-glow); }
+.stat-jump { margin-left: auto; font-size: 0.6rem; font-weight: 600; color: var(--green-brand); text-transform: none; letter-spacing: 0; }
+
 .health-list { display: flex; flex-direction: column; }
 
 .health-row {
@@ -1297,6 +1302,18 @@ details.evidence-details[open] > summary::before { transform: rotate(90deg); }
 }
 .score-ring-num { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); }
 .score-ring-grade { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; margin-top: 2px; }
+
+/* Repo title as external GitHub link (only when the repo has a public remote) */
+.repo-title-link {
+  color: var(--green-hot);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.repo-title-link:hover { text-decoration: underline; }
+.repo-title-link .ext-ico { width: 0.8em; height: 0.8em; color: var(--text-muted); flex-shrink: 0; }
+.repo-title-link:hover .ext-ico { color: var(--green-brand); }
 
 /* Hero layout */
 .hero {
