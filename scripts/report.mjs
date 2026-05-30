@@ -31,7 +31,6 @@ const repoStars = r => r.stars ?? null
 const readAsset = f => { const p = join(LS, 'assets', f); return existsSync(p) ? readFileSync(p, 'utf8').replace(/\n+$/, '') : '' }
 const HERO_SRC = join(LS, 'assets', 'hero.webp')
 const HAS_HERO = existsSync(HERO_SRC)
-// Inline the hero as a data URI so every page is a self-contained file to share.
 const HERO_DATA = HAS_HERO ? `data:image/webp;base64,${readFileSync(HERO_SRC).toString('base64')}` : ''
 
 // Lucide line icons, inlined (offline, themeable via currentColor).
@@ -78,7 +77,6 @@ F.querySelectorAll('[data-fi]').forEach(el=>el.addEventListener('click',()=>{con
 D.forEach(d=>d.querySelector('summary').addEventListener('click',()=>{if(!d.open)setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'nearest'}),0)}));
 const t=F.querySelector('.md-toggle');if(t)t.addEventListener('click',()=>{const on=F.classList.toggle('rich');t.setAttribute('aria-pressed',on);t.lastChild.textContent=on?' raw markdown':' rich text'});});`
 
-// Any avatar that 404s (bot accounts, renamed/deleted users) swaps to initials.
 const AVATAR_JS = `document.querySelectorAll('img.face,img.avatar').forEach(function(g){g.addEventListener('error',function(){var s=document.createElement('span');s.className=g.className+' broken';s.textContent=g.dataset.initials||'';s.title=g.alt||'';g.replaceWith(s)})});`
 
 const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
@@ -118,7 +116,6 @@ const avatarImg = (full, cls = '') => {
 }
 
 // Allow relative paths and fragments; reject any non-http(s)/mailto scheme
-// Only external http(s)/mailto links navigate. A skill's internal references
 // (references/*.md, memory.md) point at files that live inside the skill folder,
 // not the dashboard server, so render them as code instead of dead 404 links.
 const mdLink = (text, url) => /^(https?:|mailto:)/i.test(url.trim()) ? `<a href="${url.trim()}" rel="noopener noreferrer">${text}</a>` : `<code>${text}</code>`
@@ -152,7 +149,6 @@ const RISK_TIER = { CRITICAL: 'high', HIGH: 'med', MODERATE: 'med', GOOD: 'low' 
 
 const chart = (icon, title, body) => (body ? `<figure class="chart"><figcaption>${icon}${title}</figcaption>${body}</figure>` : '')
 
-// A single repo-health score from what the scan proved: operational severity,
 // bus factor, and knowledge concentration. Shown as a ring at the top.
 function vibeScore(r) {
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low')
@@ -188,7 +184,6 @@ function vibeGauge(r) {
 
 const vibeBadge = r => { const v = vibeScore(r); return `<span class="vibe-badge vibe-${v.tier}" title="vibe check ${v.score}/100, grade ${v.grade}">${v.emoji} ${v.score} ${v.grade}</span>` }
 
-// Contributor faces — real GitHub profile avatars where the commit email gives
 // us a username, name initials otherwise.
 function contributorStrip(fr) {
   const people = fr?.topContributors || []
@@ -199,10 +194,11 @@ function contributorStrip(fr) {
   return `<div class="faces">${people.map(face).join('')}<span class="faces-cap">${fr.contributors} contributors</span></div>`
 }
 
-// Auto shields.io badges from the scan's real facts — stack, vibe, findings,
 // bus factor, architecture. labelColor matches the terminal palette.
 const TIERHEX = { low: '3ddc84', med: 'e0b341', high: 'e0563f' }
 const SHIELD = (label, message, color) => `<img class="shield" loading="lazy" height="20" alt="${esc(label)}: ${esc(message)}" src="https://img.shields.io/static/v1?style=flat-square&labelColor=3a4a3c&label=${encodeURIComponent(label)}&message=${encodeURIComponent(message)}&color=${color}">`
+const TECH_BADGE = t => `<img class="techbadge" loading="lazy" height="24" alt="${esc(t.label)}" src="https://img.shields.io/badge/${encodeURIComponent(t.label)}-${t.color}?style=flat-square${t.slug ? `&logo=${t.slug}&logoColor=white` : ''}">`
+const techBadges = r => (r.tech?.length ? `<div class="techbadges">${r.tech.map(TECH_BADGE).join('')}</div>` : '')
 function shieldRow(r) {
   const h = sevCount(r, 'high'), m = sevCount(r, 'medium'), l = sevCount(r, 'low'), tot = h + m + l
   const fr = r.forensics, v = vibeScore(r)
@@ -237,7 +233,6 @@ function barChart(rows, { unit = '' } = {}) {
   return `<div class="barchart" role="img" aria-label="bar chart">${rows.map(row).join('')}</div>`
 }
 
-// Last two path segments, so many files named index.js stay distinct.
 const shortPath = f => f.split('/').slice(-2).join('/')
 
 function donut(segs, { centerNum, centerCap = '' } = {}) {
@@ -436,6 +431,7 @@ function repoPage(r) {
       <div class="repohead">${avatarImg(full, 'lg')}<div class="rh-text"><div class="brand"><span class="org">${esc(org)}${org ? '/' : ''}</span>${esc(name)}</div><p class="repoblurb">${esc(repoBlurb(r))}</p></div></div>
       ${vibeGauge(r)}
     </div>
+    ${techBadges(r)}
     <div class="metastrip">
       ${msec('branch', 'lang', repoStack(r))}
       <span class="m">${st === 'failed' ? I.high : st === 'clean' ? I.shield : I.scan}status <b>${st === 'failed' ? 'SIGNAL LOST' : st.toUpperCase()}</b></span>

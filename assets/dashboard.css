@@ -214,6 +214,8 @@ footer b{color:var(--green)}
 .vibe-badge.vibe-low{color:var(--low);border-color:var(--low)}
 .vibe-badge.vibe-med{color:var(--medium);border-color:var(--medium)}
 .vibe-badge.vibe-high{color:var(--high);border-color:var(--high)}
+.techbadges{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:1.1rem}
+.techbadges .techbadge{height:24px}
 .shields{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:1rem}
 .shields .shield{height:20px;border-radius:3px}
 .foot-main{display:block}

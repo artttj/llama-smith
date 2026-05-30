@@ -10,13 +10,8 @@ import { fileURLToPath } from 'node:url'
 import { collectChurn, topHotspots, isCodeFile } from '../lib/churn.mjs'
 
 const [, , url, slug] = process.argv
-// Canonicalize: macOS /var → /private/var. llama-smith.mjs's self-invocation
-// guard compares its canonical import.meta.url to argv[1]; a symlinked path
-// silently no-ops main(). realpathSync makes them match.
 const LS = realpathSync(dirname(dirname(fileURLToPath(import.meta.url))))
 const CLI = join(LS, 'llama-smith.mjs')
-// Clone under a dir whose basename IS the slug so the forged skill is named
-// "<slug>-devops" instead of "<tmpdir>-devops".
 const D = `/tmp/lsp/${slug}`
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, ...opts })
 
@@ -46,7 +41,6 @@ try {
     ? `${out.opsFindings.length} file-cited operational findings across ${out.commits.toLocaleString()} commits, all validated against real files.`
     : `No operational risks found across ${out.commits.toLocaleString()} commits. Nothing was invented.`
 
-  // The deep-skill facts the forge produced: architecture, commands, boundaries, forensics.
   const findPath = join(D, '.smith', 'findings.json')
   if (existsSync(findPath)) {
     const fj = JSON.parse(readFileSync(findPath, 'utf8'))
@@ -55,13 +49,13 @@ try {
     out.entrypoints = fj.entrypoints || []
     out.architecture = fj.architecture || []
     out.forensics = fj.forensics || null
+    out.tech = fj.tech || []
     out.stackFull = fj.stack || ''
     out.stack = shortStack(out.stackFull)
   }
   out.oldScarFiles = anomalies.filter(a => a.smith === 'scar' && a.file).map(a => a.file)
   out.nonCodeLeaks = out.oldScarFiles.filter(f => !isCodeFile(f))
 
-  // forged skill artifact (capture BEFORE churn so a churn failure never loses it)
   const skillsDir = join(D, '.claude', 'skills')
   out.skills = []
   if (existsSync(skillsDir)) {
@@ -71,7 +65,6 @@ try {
     }
   }
 
-  // code-only churn — partial clones can hit missing objects; tolerate it like the tool's git() does
   try {
     const log = run('git', ['-C', D, 'log', '--name-only', '--pretty=format:', '--since=1 year ago'])
     out.newCodeHotspots = topHotspots(collectChurn(log), { limit: 8 })
@@ -81,6 +74,8 @@ try {
   }
 } catch (e) {
   out.error = e.message
+  process.stderr.write((e.stack || e.message) + '\n')
+  process.exitCode = 1
 } finally {
   rmSync(D, { recursive: true, force: true })
 }
