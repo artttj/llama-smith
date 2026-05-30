@@ -10,7 +10,7 @@ import { FRESH_DAYS, STALE_DAYS } from '../lib/freshness.mjs'
 const LS = realpathSync(dirname(dirname(fileURLToPath(import.meta.url))))
 const src = process.argv[2] || '/tmp/ls-results.json'
 const outDir = process.argv[3] || join(LS, 'reports')
-const data = JSON.parse(readFileSync(src, 'utf8'))
+let data = JSON.parse(readFileSync(src, 'utf8'))
 
 const FULL = {
   laravel: 'laravel/framework', nextjs: 'vercel/next.js', astro: 'withastro/astro', drizzle: 'drizzle-team/drizzle-orm', hono: 'honojs/hono',
@@ -74,7 +74,7 @@ const SMITH_ICON = { deploy: 'rocket', secret: 'key', cron: 'cron', ci: 'branch'
 const SMITH_STAMP = { deploy: 'DEPLOY-SMITH', secret: 'SECRET-SMITH', cron: 'CRON-SMITH', ci: 'CI-SMITH', scar: 'SCAR-SMITH' }
 const stamp = t => `<span class="stamp">[${esc(t)}]</span>`
 
-const CSS = readAsset("dashboard.css")  // editable in assets/dashboard.css, inlined at build
+const CSS = readAsset("dashboard-v2.css")  // editable in assets/dashboard-v2.css, inlined at build
 
 const RAIN = `const c=document.getElementById('rain');
 if(c&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const x=c.getContext('2d');let cols,d;
@@ -97,7 +97,7 @@ const shell = (title, body, js = '') => `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
-<link rel="stylesheet" href="https://fonts.bunny.net/css?family=jetbrains-mono:400,500,600,700,800">
+<link rel="stylesheet" href="https://fonts.bunny.net/css?family=jetbrains-mono:400,500,600,700,800|ibm-plex-mono:400,500">
 <style>${CSS}</style></head>
 <body><canvas id="rain"></canvas><div class="wrap">${body}</div>
 <script>${RAIN}${AVATAR_JS}${js}</script></body></html>`
@@ -385,6 +385,42 @@ function indexPage() {
       </div>
     </div>
   </header>
+  <div class="steps">${STEPS.map(s => `<div class="step"><span class="step-n">${s.n}</span><span class="step-l">${esc(s.label)}</span><span class="step-d">${esc(s.desc)}</span></div>`).join('')}</div>
+  <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>Scanned under real conditions</h2><p class="sub">Repos the Smith swarm mapped, with repo grade, forensic charts, and the forged skill.</p></div>
+  <div class="grid">${famous.map(card).join('')}</div>
+  ${wild.length ? `<div class="sec"><span class="chip">${I.eye} In the wild</span><h2>Random low-star repos</h2><p class="sub">Does it stay honest when there's little to find?</p></div><div class="grid">${wild.map(card).join('')}</div>` : ''}
+  ${corpusCharts()}
+  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
+  <div class="matrix">
+    <div class="matrix-layer arch">
+      <div class="layer-label">${I.layers} Architecture Layer</div>
+      <div class="matrix-cells">
+        <div class="mcell"><div class="mth">${I.eye}<div class="mname">Project architecture</div></div>${stamp('ARCHITECT-SMITH')}<p>What the app is, its modules, data flow, data model, and entrypoints.</p></div>
+        <div class="mcell"><div class="mth">${I.package}<div class="mname">Stack & commands</div></div>${stamp('STACK-MAP')}<p>The real stack, entrypoints, and the build/test/deploy commands.</p></div>
+        <div class="mcell"><div class="mth">${I.shield}<div class="mname">Do-not-touch</div></div>${stamp('BOUNDARIES')}<p>Lockfiles, generated output, and env files an agent must not hand-edit.</p></div>
+      </div>
+    </div>
+    <div class="matrix-connector"><span>_ops layer hangs off architecture_</span></div>
+    <div class="matrix-layer ops">
+      <div class="layer-label">${I.zap} Operational Layer</div>
+      <div class="matrix-cells">
+        <div class="mcell"><div class="mth">${I.rocket}<div class="mname">Operational risk</div></div>${stamp('OPS-SMITHS')}<p>Deploy traps, secret leaks, and cron ghosts.</p></div>
+        <div class="mcell"><div class="mth">${I.bug}<div class="mname">Fragile hotspots</div></div>${stamp('FRAGILITY')}<p>Code that churns hard over the last year. Where bugs live.</p></div>
+      </div>
+    </div>
+    <div class="matrix-oracles">
+      <div class="oracle validate">
+        <div class="oth">${I.eye}<div class="oname">Validation Oracle</div></div>
+        <p>Re-reads each claim against its file — hallucinations die here.</p>
+      </div>
+      <div class="oracle learn">
+        <div class="oth">${I.layers}<div class="oname">Self-Improvement Oracle</div></div>
+        <p>Keeps the skill's memory. Learns from every scan.</p>
+      </div>
+    </div>
+  </div>
+  <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>Scan evidence — ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
+  <div class="glitches">${glitchFeed()}</div>
   <section class="stats">
     <div class="stat">${I.repo}<div class="n">${S.repos}</div><div class="l">repos mapped</div></div>
     <div class="stat hi">${I.eye}<div class="n">${S.arch}</div><div class="l">architecture facts</div></div>
@@ -394,15 +430,6 @@ function indexPage() {
     <div class="stat">${I.file}<div class="n">${S.forged}</div><div class="l">skills forged</div></div>
     <div class="stat">${I.branch}<div class="n">${S.commits.toLocaleString()}</div><div class="l">commits read</div></div>
   </section>
-  <div class="steps">${STEPS.map(s => `<div class="step"><span class="step-n">${s.n}</span><span class="step-l">${esc(s.label)}</span><span class="step-d">${esc(s.desc)}</span></div>`).join('')}</div>
-  <div class="sec"><span class="chip">${I.repo} Scanned sites</span><h2>Scanned under real conditions</h2><p class="sub">Repos the Smith swarm mapped, with repo grade, forensic charts, and the forged skill.</p></div>
-  <div class="grid">${famous.map(card).join('')}</div>
-  ${wild.length ? `<div class="sec"><span class="chip">${I.eye} In the wild</span><h2>Random low-star repos</h2><p class="sub">Does it stay honest when there's little to find?</p></div><div class="grid">${wild.map(card).join('')}</div>` : ''}
-  ${corpusCharts()}
-  <div class="sec"><span class="chip">${I.scan} What the skill captures</span><h2>The matrix of a codebase</h2><p class="sub">Architecture first — what it is and how it's built. Then the ops layer: deploy traps, secret leaks, cron ghosts.</p></div>
-  <div class="types">${TYPES.map(t => `<div class="type"><div class="th">${I[t.ic]}<h3>${esc(t.name)}</h3></div>${stamp(t.stamp)}<p>${esc(t.desc)}</p></div>`).join('')}</div>
-  <div class="sec"><span class="chip">${I.zap} Glitch feed</span><h2>Scan evidence — ranked</h2><p class="sub">Every one validated against a real file. Unknown stays unknown.</p></div>
-  <div class="glitches">${glitchFeed()}</div>
   ${siteFooter()}`
   return shell('llama-smith · the construct', body)  // shell already includes RAIN
 }
@@ -489,7 +516,23 @@ function repoPage(r) {
   return shell(`llama-smith · ${full}`, body, FILES_JS + RESCAN_JS)
 }
 
-mkdirSync(outDir, { recursive: true })
-writeFileSync(join(outDir, 'index.html'), indexPage())
-for (const r of data) writeFileSync(join(outDir, `${safeName(r.repo)}.html`), repoPage(r))
-process.stdout.write('wrote ' + (data.length + 1) + ' pages\n')
+// Programmatic API: rebuild the dashboard from an array of result objects.
+// Called by the CLI after a scan to regenerate HTML before serving.
+export function buildDashboard(results, out = outDir) {
+  const saved = data
+  data.length = 0
+  data.push(...results)
+  mkdirSync(out, { recursive: true })
+  writeFileSync(join(out, 'index.html'), indexPage())
+  for (const r of data) writeFileSync(join(out, `${safeName(r.repo)}.html`), repoPage(r))
+  data.length = 0
+  data.push(...saved)
+  return out
+}
+
+if (process.argv[1] && realpathSync(dirname(dirname(fileURLToPath(import.meta.url)))) === LS) {
+  mkdirSync(outDir, { recursive: true })
+  writeFileSync(join(outDir, 'index.html'), indexPage())
+  for (const r of data) writeFileSync(join(outDir, `${safeName(r.repo)}.html`), repoPage(r))
+  process.stdout.write('wrote ' + (data.length + 1) + ' pages\n')
+}
