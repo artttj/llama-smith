@@ -116,6 +116,57 @@ const siteFooter = () => `<footer class="footer">
   <span class="footer-main"><b>llama·smith</b> — it does not summarize your repo. It forges operational memory from it.</span>
   <span class="footer-sub">MIT © Artem Iagovdik · icons by <a href="https://lucide.dev">Lucide</a> (ISC) · <a href="https://github.com/artttj/llama-smith">github.com/artttj/llama-smith</a></span>
 </footer>`
+
+const heroSection = () => {
+  const heroImg = HAS_HERO ? `<img src="${HERO_DATA}" alt="llama-smith artifact" class="hero-image">` : ''
+  return `<div class="hero">
+    ${heroImg}
+    <div class="hero-content">
+      <h1 class="display-xl">Many Smiths enter.<br>One skill comes out.</h1>
+      <p class="quote" style="margin-top:1.5rem">It does not summarize your repo. It forges operational memory from it.</p>
+      <div class="hero-proof">
+        <span class="proof-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Real repo scan
+        </span>
+        <span class="proof-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><polyline points="13 2 13 9 20 9"/></svg>
+          File-path cited
+        </span>
+        <span class="proof-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/></svg>
+          Ollama local/cloud
+        </span>
+        <span class="proof-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Oracle validated
+        </span>
+      </div>
+    </div>
+  </div>
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+      <span class="step-label">Scan repo</span>
+      <span class="step-desc">Many agents map structure</span>
+    </div>
+    <div class="pipeline-step">
+      <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><polyline points="14 2 14 9 20 9"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span class="step-label">Extract facts</span>
+      <span class="step-desc">Architecture &amp; risks</span>
+    </div>
+    <div class="pipeline-step">
+      <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.06 12.34a1.7 1.7 0 0 1 0-.68 10.94 10.94 0 0 1 19.88 0 1.7 1.7 0 0 1 0 .68 10.94 10.94 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="step-label">Oracle validates</span>
+      <span class="step-desc">Hallucinations rejected</span>
+    </div>
+    <div class="pipeline-step">
+      <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 9 21 9"/><path d="m9 15 2 2 4-4"/></svg>
+      <span class="step-label">Skill forged</span>
+      <span class="step-desc">Claude-ready output</span>
+    </div>
+  </div>`
+}
 const statusOf = r => r.opsSharpness === 'failed' ? 'failed' : r.opsSharpness === 'clean' || !(r.opsFindings || []).length ? 'clean' : 'sharp'
 
 // Opinionated one-liner, grounded: the validated architecture overview is the
