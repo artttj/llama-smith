@@ -227,6 +227,7 @@ function shieldRow(r) {
     fr && 'contributors' in fr ? SHIELD('contributors', String(fr.contributors), '3ddc84') : '',
     SHIELD('vibe', `${v.score} ${v.grade}`, TIERHEX[v.tier]),
     SHIELD('findings', String(tot), h ? TIERHEX.high : tot ? TIERHEX.med : TIERHEX.low),
+    (() => { const n = (r.opsFindings || []).filter(f => f.escalated).length; return n ? SHIELD('escalated', String(n), 'e0563f') : '' })(),
     h ? SHIELD('critical', String(h), TIERHEX.high) : '',
     fr && 'busFactor' in fr ? SHIELD('bus factor', `${fr.busFactor} ${fr.risk}`, TIERHEX[RISK_TIER[fr.risk]] || '3ddc84') : '',
     fr?.singleOwner?.length ? SHIELD('single-owner', String(fr.singleOwner.length), 'e0b341') : '',
