@@ -577,3 +577,88 @@ body::after {
   color: var(--text-muted);
   font-weight: 600;
 }
+
+/* Evidence cards */
+.evidence {
+  display: grid;
+  grid-template-columns: 4px 1fr;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  transition: border-color 0.18s, transform 0.18s;
+}
+
+.evidence:hover {
+  border-color: var(--line-strong);
+  transform: translateX(3px);
+}
+
+.evidence-rail {
+  background: var(--line);
+}
+
+.evidence-high .evidence-rail { background: var(--red); }
+.evidence-medium .evidence-rail { background: var(--amber); }
+.evidence-low .evidence-rail { background: var(--green-brand); }
+
+.evidence-body {
+  padding: 1.1rem 1.3rem;
+}
+
+.evidence-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.evidence-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-top: 0.5rem;
+}
+
+.evidence-text {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 0.5rem;
+}
+
+.evidence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* File path chip */
+.path-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--cyan);
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.path-chip:hover {
+  border-color: var(--cyan);
+  background: var(--surface-hover);
+}
+
+.path-chip.copied {
+  color: var(--green-brand);
+  border-color: var(--green-brand);
+}
