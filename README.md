@@ -17,7 +17,7 @@ Many Smiths enter.
 One skill comes out.
 ```
 
-👁️⃤ **Live demo:** [artttj.de/llama-smith](https://artttj.de/llama-smith) — the forensic dashboard, scanning real public repos.
+📟  **Live demo:** [artttj.de/llama-smith](https://artttj.de/llama-smith) — the forensic dashboard, scanning real public repos.
 
 ## Quick start
 
